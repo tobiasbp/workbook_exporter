@@ -93,9 +93,9 @@ class WorkbookCollector(object):
         # Run through the dictionary and add data to the metric
         for company_id, data in credit.items():
             for cur, data in data.items():
-                credit_due.add_metric([str(company_id), cur], data['due'])
-                credit_total.add_metric([str(company_id), cur], data['total'])
-        
+                credit_due.add_metric([str(company_id), cur], int(data['due']))
+                credit_total.add_metric([str(company_id), cur], int(data['total']))
+
         yield credit_due
         yield credit_total
 
@@ -114,7 +114,9 @@ class WorkbookCollector(object):
         )
 
     try:
-        debtors = self.wb.get_debtors_balance()
+        debtors = []
+        for i in companies.keys():
+            debtors += self.wb.get_debtors_balance(company_id=i)
     except Exception as e:
         print("Error: {}".format(e))
         wb_error = True
@@ -126,13 +128,13 @@ class WorkbookCollector(object):
         debit = {company_id:{c:{'due':0.0, 'total':0.0} for c in currencies.values()} for company_id in companies.keys()}
 
         for d in debtors:
-            # Only get data from creditors with amounts
+            # Only get data from debtors with amounts
             if d.get('RemainingAmountTotal'):
                 # Get data
                 currency = currencies[d['CurrencyId']]
                 total = d.get('RemainingAmountTotal',0.0)
                 due = d.get('RemainingAmountDue',0.0)
-                
+
                 # Update the dictionary
                 debit[d['CompanyId']][currency]['due'] += due
                 debit[d['CompanyId']][currency]['total'] += total
@@ -140,12 +142,11 @@ class WorkbookCollector(object):
         # Run through the dictionary and add data to the metric
         for company_id, data in debit.items():
             for cur, data in data.items():
-                debit_due.add_metric([str(company_id), cur], data['due'])
-                debit_total.add_metric([str(company_id), cur], data['total'])
-        
+                debit_due.add_metric([str(company_id), cur], int(data['due']))
+                debit_total.add_metric([str(company_id), cur], int(data['total']))
+
         yield debit_due
         yield debit_total
-
 
 
     # A dictionary with customer_id as keys
