@@ -43,8 +43,64 @@ class WorkbookCollector(object):
 
   def collect(self):
 
+    # A dictionary mapping id to ISO name
+    currencies = {c['Id']:c['Iso4127'] for c in self.wb.get_currencies()}
+
+    # A dictionary mapping id to company name
+    companies = {c['Id']:c['Name'] for c in self.wb.get_companies(active=True)}
+
     # Assume no problems with getting data from Workbook
     wb_error = False
+
+    # CREDIT #
+
+    credit_due = GaugeMetricFamily(
+        'workbook_credit_due',
+        'Credit due',
+        labels=['company_id', 'currency']
+        )
+
+    credit_total = GaugeMetricFamily(
+        'workbook_credit_total',
+        'Total credit',
+        labels=['company_id', 'currency']
+        )
+
+    try:
+        creditors = self.wb.get_creditors()
+    except Exception as e:
+        print("Error: {}".format(e))
+        wb_error = True
+    else:
+        # Create a dictionary with companies.
+        # Each company has dictionarys for each currency, with
+        # amount due and total
+        # company_id:CUR:due+total
+        credit = {company_id:{c:{'due':0.0, 'total':0.0} for c in currencies.values()} for company_id in companies.keys()}
+
+        for c in creditors:
+            # Only get data from creditors with amounts
+            if c.get('RemainingAmountTotal'):
+                # Get data
+                currency = currencies[c['CurrencyId']]
+                total = c.get('RemainingAmountTotal',0.0)
+                due = c.get('RemainingAmountDue',0.0)
+                
+                # Update the dictionary
+                credit[c['CompanyId']][currency]['due'] += due
+                credit[c['CompanyId']][currency]['total'] += total
+
+        # Run through the dictionary and add data to the metric
+        for company_id, data in credit.items():
+            for cur, data in data.items():
+                credit_due.add_metric([str(company_id), cur], data['due'])
+                credit_total.add_metric([str(company_id), cur], data['total'])
+        
+        yield credit_due
+        yield credit_total
+
+
+
 
     # A dictionary with customer_id as keys
     wb_customers = {}
@@ -125,7 +181,7 @@ class WorkbookCollector(object):
                 (datetime.today() - date_created).days
                 )
     
-    yield job_age_days
+    #yield job_age_days
 
 
     # EMPLOYEES #
@@ -164,7 +220,7 @@ class WorkbookCollector(object):
                 (datetime.today() - parse_date(e['HireDate'])).days
                 )
 
-        yield employee_days_employed
+        #yield employee_days_employed
 
     # CUSTOMERS #
 
@@ -204,7 +260,7 @@ class WorkbookCollector(object):
             )
 
 
-        yield customers
+        #yield customers
     
     #print(wb_customers)
     
