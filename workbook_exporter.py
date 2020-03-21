@@ -33,7 +33,8 @@ def parse_date(wb_time):
     Convert a Workbook time string to a datetime object
     '''
     return datetime.strptime(wb_time, TIME_FORMAT)
-    
+
+
 def data_to_histogram(observations, buckets):
     '''
     Returns a list of buckets with values and the sum of the observations
@@ -71,339 +72,375 @@ def data_to_histogram(observations, buckets):
 
 class WorkbookCollector(object):
 
-  def __init__(self, wb_url, wb_user, wb_pass):
-      # Workbook API object
-      self.wb = workbook_api.WorkbookAPI(wb_url, wb_user, wb_pass)
+    def __init__(self, wb_url, wb_user, wb_pass):
+          # Workbook API object
+          self.wb = workbook_api.WorkbookAPI(wb_url, wb_user, wb_pass)
 
-  def collect(self):
 
-    # A dictionary mapping id to ISO name
-    currencies = {c['Id']:c['Iso4127'] for c in self.wb.get_currencies()}
-
-    # A dictionary mapping id to company name
-    companies = {c['Id']:c['Name'] for c in self.wb.get_companies(active=True)}
-
-    # Assume no problems with getting data from Workbook
-    wb_error = False
+    def employee_days(self):
     
-    # EMPLOYEES #
+        wb_error = False
+        
+        for company_id in self.companies.keys():
+            try:
+                # Get active employees
+                employees = self.wb.get_employees(Active=True,CompanyId=company_id)
+            except Exception:
+                print("Could not get WB employees with error: {}".format(e))
+                wb_error = True
+            else:
+                # Gather observations (Days since employment)
+                observations = []
+                for e in employees:
+                    observations.append((datetime.today() - parse_date(e['HireDate'])).days)
+                
+                # Get buckets and sum of observations
+                buckets, bucket_sum = data_to_histogram(
+                    observations,
+                    [3*30, 5*30, 2*12*30+9*30, 5*12*30+8*30, 8*12*30+7*30]
+                    )
+    
+                # Create histogram
+                h = HistogramMetricFamily(
+                    'workbook_employees_days_employed',
+                    'Days since employment',
+                    labels=['company_id'])
+                # Add date
+                h.add_metric([str(company_id)], buckets, bucket_sum)
+                # Report
+                yield h
+                #return h
 
-    for company_id in companies.keys():
+
+    def collect(self):
+    
+        # A dictionary mapping id to ISO name
+        self.currencies = {c['Id']:c['Iso4127'] for c in self.wb.get_currencies()}
+    
+        # A dictionary mapping id to company name
+        self.companies = {c['Id']:c['Name'] for c in self.wb.get_companies(active=True)}
+    
+        # Assume no problems with getting data from Workbook
+        wb_error = False
+        
+        # EMPLOYEES #
+                
+        for company_id in self.companies.keys():
+            try:
+                # Get active employees
+                employees = self.wb.get_employees(Active=True,CompanyId=company_id)
+            except Exception:
+                print("Could not get WB employees with error: {}".format(e))
+                wb_error = True
+            else:
+                # Gather observations (Days since employment)
+                observations = []
+                for e in employees:
+                    observations.append((datetime.today() - parse_date(e['HireDate'])).days)
+                
+                # Get buckets and sum of observations
+                buckets, bucket_sum = data_to_histogram(
+                    observations,
+                    [3*30, 5*30, 2*12*30+9*30, 5*12*30+8*30, 8*12*30+7*30]
+                    )
+    
+                # Create histogram
+                h = HistogramMetricFamily(
+                    'workbook_employees_days_employed',
+                    'Days since employment',
+                    labels=['company_id'])
+                # Add date
+                h.add_metric([str(company_id)], buckets, bucket_sum)
+                # Report
+                yield h
+    
+        return
+    
+        # CREDIT #
+    
+        credit_due = GaugeMetricFamily(
+            'workbook_credit_due',
+            'Credit due',
+            labels=['company_id', 'currency']
+            )
+    
+        credit_total = GaugeMetricFamily(
+            'workbook_credit_total',
+            'Total credit',
+            labels=['company_id', 'currency']
+            )
+    
+        try:
+            creditors = self.wb.get_creditors()
+        except Exception as e:
+            print("Error: {}".format(e))
+            wb_error = True
+        else:
+            # Create a dictionary with companies.
+            # Each company has dictionarys for each currency, with
+            # amount due and total
+            # company_id:CUR:due+total
+            credit = {company_id:{c:{'due':0.0, 'total':0.0} for c in currencies.values()} for company_id in companies.keys()}
+    
+            for c in creditors:
+                # Only get data from creditors with amounts
+                if c.get('RemainingAmountTotal'):
+                    # Get data
+                    currency = currencies[c['CurrencyId']]
+                    total = c.get('RemainingAmountTotal',0.0)
+                    due = c.get('RemainingAmountDue',0.0)
+                    
+                    # Update the dictionary
+                    credit[c['CompanyId']][currency]['due'] += due
+                    credit[c['CompanyId']][currency]['total'] += total
+    
+            # Run through the dictionary and add data to the metric
+            for company_id, data in credit.items():
+                for cur, data in data.items():
+                    credit_due.add_metric([str(company_id), cur], int(data['due']))
+                    credit_total.add_metric([str(company_id), cur], int(data['total']))
+    
+            yield credit_due
+            yield credit_total
+    
+        # DEBIT #
+    
+        debit_due = GaugeMetricFamily(
+            'workbook_debit_due',
+            'Debit due',
+            labels=['company_id', 'currency']
+            )
+    
+        debit_total = GaugeMetricFamily(
+            'workbook_debit_total',
+            'Total debit',
+            labels=['company_id', 'currency']
+            )
+    
+        try:
+            debtors = []
+            for i in companies.keys():
+                debtors += self.wb.get_debtors_balance(company_id=i)
+        except Exception as e:
+            print("Error: {}".format(e))
+            wb_error = True
+        else:
+            # Create a dictionary with companies.
+            # Each company has dictionarys for each currency, with
+            # amount due and total
+            # company_id:CUR:due+total
+            debit = {company_id:{c:{'due':0.0, 'total':0.0} for c in currencies.values()} for company_id in companies.keys()}
+    
+            for d in debtors:
+                # Only get data from debtors with amounts
+                if d.get('RemainingAmountTotal'):
+                    # Get data
+                    currency = currencies[d['CurrencyId']]
+                    total = d.get('RemainingAmountTotal',0.0)
+                    due = d.get('RemainingAmountDue',0.0)
+    
+                    # Update the dictionary
+                    debit[d['CompanyId']][currency]['due'] += due
+                    debit[d['CompanyId']][currency]['total'] += total
+    
+            # Run through the dictionary and add data to the metric
+            for company_id, data in debit.items():
+                for cur, data in data.items():
+                    debit_due.add_metric([str(company_id), cur], int(data['due']))
+                    debit_total.add_metric([str(company_id), cur], int(data['total']))
+    
+            yield debit_due
+            yield debit_total
+    
+    
+        # A dictionary with customer_id as keys
+        wb_customers = {}
+        
+        # Get the Workbook departments
+        departments = {}
+        try:
+            result = self.wb.get_departments()
+        except Exception as e:
+            print("Error getting departments from WB: {}".format(e))
+            wb_error = True
+        else:
+            # Dict of departments with company ID is key
+            departments = {d['CompanyId']:{} for d in result}
+            for d in result:
+                departments[d['CompanyId']][d['Id']] = d['Name']
+            print(departments)
+    
+        # JOBS #
+    
+        job_age_days = GaugeMetricFamily(
+            'workbook_job_age_days',
+            'Days since job was created',
+            labels=[
+                "job_id",
+                "name",
+                "status_id",
+                "company_id",
+                "created",
+                "type_id",
+                "customer_id",
+                "customer_name",
+                "department_id",
+                "department_name",
+                "retainer",
+                "billable",
+                "days_to_end_date",
+                ])
+    
+    
+        try:
+            result = self.wb.get_jobs(Status=ACTIVE_JOBS)
+        except Exception as e:
+            print(e)
+            wb_error = True
+        else:
+            for j in result:
+                
+                # Maintain dict with no of jobs pr. customer
+                if not j.get('CustomerId') in wb_customers.keys():
+                    wb_customers[j.get('CustomerId')] = {'no_of_jobs': 0}
+                else:
+                    wb_customers[j.get('CustomerId')]['no_of_jobs'] += 1
+                    
+                # Time job was created
+                date_created = parse_date(j.get('CreateDate'))
+                
+                # End date for job
+                date_end = parse_date(j.get('EndDate'))
+                
+                # Add the metric(lables, value)
+                job_age_days.add_metric(
+                    [str(j.get('Id')),
+                        j.get('JobName'),
+                        str(j.get('StatusId')),
+                        str(j.get('CompanyId')),
+                        str(j.get('CreateDate')),
+                        str(j.get('JobTypeId')),
+                        str(j.get('CustomerId')),
+                        str(j.get('CustomerName')),
+                        str(j.get('CompanyDepartmentId')),
+                        departments[j.get('CompanyId')][j.get('CompanyDepartmentId')],
+                        "1" if j.get('RetainerJob') else "0",
+                        "1" if j.get('Billable') else "0",
+                        str((date_end - datetime.today()).days)
+                        ],
+                    # Days since creation
+                    (datetime.today() - date_created).days
+                    )
+        
+        #yield job_age_days
+    
+    
+        # EMPLOYEES #
+    
+        '''
+        employee_days_employed_o = GaugeMetricFamily(
+            'workbook_employee_days_employed',
+            'Days since the employee was hired',
+            labels=[
+                "company_id",
+                "employee_id",
+                "department_id",
+                "type_id",
+                "sex_id",
+                "position_id",
+                "employment_type_id",
+                ])
+        '''
+    
+        '''
+        employees_days_employed = Histogram(
+            'workbook_employees_days_employed',
+            'Days passed since employment began'
+            #labels=[],
+            #buckets=(90, 365, 2 * 365, float("inf"))
+            )
+        '''
+    
+        '''
         try:
             # Get active employees
-            employees = self.wb.get_employees(Active=True,CompanyId=company_id)
+            employees = self.wb.get_employees(Active=True)
         except Exception:
             print("Could not get WB employees with error: {}".format(e))
             wb_error = True
         else:
-            # Gather observations (Days since employment)
-            observations = []
             for e in employees:
-                observations.append((datetime.today() - parse_date(e['HireDate'])).days)
-            
-            # Get buckets and sum of observations
-            buckets, bucket_sum = data_to_histogram(
-                observations,
-                [90, 180, 365, 2*365, 5*365]
-                )
-
-            # Create histogram
-            h = HistogramMetricFamily(
-                'workbook_employees_days_employed',
-                'Days since employment',
-                labels=['company_id'])
-            # Add date
-            h.add_metric([str(company_id)], buckets, bucket_sum)
-            # Report
-            yield h
-
-    return
-
-    # CREDIT #
-
-    credit_due = GaugeMetricFamily(
-        'workbook_credit_due',
-        'Credit due',
-        labels=['company_id', 'currency']
-        )
-
-    credit_total = GaugeMetricFamily(
-        'workbook_credit_total',
-        'Total credit',
-        labels=['company_id', 'currency']
-        )
-
-    try:
-        creditors = self.wb.get_creditors()
-    except Exception as e:
-        print("Error: {}".format(e))
-        wb_error = True
-    else:
-        # Create a dictionary with companies.
-        # Each company has dictionarys for each currency, with
-        # amount due and total
-        # company_id:CUR:due+total
-        credit = {company_id:{c:{'due':0.0, 'total':0.0} for c in currencies.values()} for company_id in companies.keys()}
-
-        for c in creditors:
-            # Only get data from creditors with amounts
-            if c.get('RemainingAmountTotal'):
-                # Get data
-                currency = currencies[c['CurrencyId']]
-                total = c.get('RemainingAmountTotal',0.0)
-                due = c.get('RemainingAmountDue',0.0)
-                
-                # Update the dictionary
-                credit[c['CompanyId']][currency]['due'] += due
-                credit[c['CompanyId']][currency]['total'] += total
-
-        # Run through the dictionary and add data to the metric
-        for company_id, data in credit.items():
-            for cur, data in data.items():
-                credit_due.add_metric([str(company_id), cur], int(data['due']))
-                credit_total.add_metric([str(company_id), cur], int(data['total']))
-
-        yield credit_due
-        yield credit_total
-
-    # DEBIT #
-
-    debit_due = GaugeMetricFamily(
-        'workbook_debit_due',
-        'Debit due',
-        labels=['company_id', 'currency']
-        )
-
-    debit_total = GaugeMetricFamily(
-        'workbook_debit_total',
-        'Total debit',
-        labels=['company_id', 'currency']
-        )
-
-    try:
-        debtors = []
-        for i in companies.keys():
-            debtors += self.wb.get_debtors_balance(company_id=i)
-    except Exception as e:
-        print("Error: {}".format(e))
-        wb_error = True
-    else:
-        # Create a dictionary with companies.
-        # Each company has dictionarys for each currency, with
-        # amount due and total
-        # company_id:CUR:due+total
-        debit = {company_id:{c:{'due':0.0, 'total':0.0} for c in currencies.values()} for company_id in companies.keys()}
-
-        for d in debtors:
-            # Only get data from debtors with amounts
-            if d.get('RemainingAmountTotal'):
-                # Get data
-                currency = currencies[d['CurrencyId']]
-                total = d.get('RemainingAmountTotal',0.0)
-                due = d.get('RemainingAmountDue',0.0)
-
-                # Update the dictionary
-                debit[d['CompanyId']][currency]['due'] += due
-                debit[d['CompanyId']][currency]['total'] += total
-
-        # Run through the dictionary and add data to the metric
-        for company_id, data in debit.items():
-            for cur, data in data.items():
-                debit_due.add_metric([str(company_id), cur], int(data['due']))
-                debit_total.add_metric([str(company_id), cur], int(data['total']))
-
-        yield debit_due
-        yield debit_total
-
-
-    # A dictionary with customer_id as keys
-    wb_customers = {}
-    
-    # Get the Workbook departments
-    departments = {}
-    try:
-        result = self.wb.get_departments()
-    except Exception as e:
-        print("Error getting departments from WB: {}".format(e))
-        wb_error = True
-    else:
-        # Dict of departments with company ID is key
-        departments = {d['CompanyId']:{} for d in result}
-        for d in result:
-            departments[d['CompanyId']][d['Id']] = d['Name']
-        print(departments)
-
-    # JOBS #
-
-    job_age_days = GaugeMetricFamily(
-        'workbook_job_age_days',
-        'Days since job was created',
-        labels=[
-            "job_id",
-            "name",
-            "status_id",
-            "company_id",
-            "created",
-            "type_id",
-            "customer_id",
-            "customer_name",
-            "department_id",
-            "department_name",
-            "retainer",
-            "billable",
-            "days_to_end_date",
-            ])
-
-
-    try:
-        result = self.wb.get_jobs(Status=ACTIVE_JOBS)
-    except Exception as e:
-        print(e)
-        wb_error = True
-    else:
-        for j in result:
-            
-            # Maintain dict with no of jobs pr. customer
-            if not j.get('CustomerId') in wb_customers.keys():
-                wb_customers[j.get('CustomerId')] = {'no_of_jobs': 0}
-            else:
-                wb_customers[j.get('CustomerId')]['no_of_jobs'] += 1
-                
-            # Time job was created
-            date_created = parse_date(j.get('CreateDate'))
-            
-            # End date for job
-            date_end = parse_date(j.get('EndDate'))
-            
-            # Add the metric(lables, value)
-            job_age_days.add_metric(
-                [str(j.get('Id')),
-                    j.get('JobName'),
-                    str(j.get('StatusId')),
-                    str(j.get('CompanyId')),
-                    str(j.get('CreateDate')),
-                    str(j.get('JobTypeId')),
-                    str(j.get('CustomerId')),
-                    str(j.get('CustomerName')),
-                    str(j.get('CompanyDepartmentId')),
-                    departments[j.get('CompanyId')][j.get('CompanyDepartmentId')],
-                    "1" if j.get('RetainerJob') else "0",
-                    "1" if j.get('Billable') else "0",
-                    str((date_end - datetime.today()).days)
+                employee_days_employed.add_metric(
+                    [
+                        str(e.get('CompanyId', '')),
+                        str(e.get('Id', '')),
+                        str(e.get('DepartmentId', '')),
+                        str(e.get('TypeId', '')),
+                        str(e.get('Sex', '')),
+                        str(e.get('EmployeePosition', '')),
+                        str(e.get('EmploymentTypeId', '')),
                     ],
-                # Days since creation
-                (datetime.today() - date_created).days
-                )
+                    (datetime.today() - parse_date(e['HireDate'])).days
+                    )
+        '''
+        #employee_days_employed.add_metric([],20)
+        #yield employee_days_employed
     
-    #yield job_age_days
-
-
-    # EMPLOYEES #
-
-    '''
-    employee_days_employed_o = GaugeMetricFamily(
-        'workbook_employee_days_employed',
-        'Days since the employee was hired',
-        labels=[
-            "company_id",
-            "employee_id",
-            "department_id",
-            "type_id",
-            "sex_id",
-            "position_id",
-            "employment_type_id",
-            ])
-    '''
-
-    '''
-    employees_days_employed = Histogram(
-        'workbook_employees_days_employed',
-        'Days passed since employment began'
-        #labels=[],
-        #buckets=(90, 365, 2 * 365, float("inf"))
-        )
-    '''
-
-    '''
-    try:
-        # Get active employees
-        employees = self.wb.get_employees(Active=True)
-    except Exception:
-        print("Could not get WB employees with error: {}".format(e))
-        wb_error = True
-    else:
-        for e in employees:
-            employee_days_employed.add_metric(
-                [
-                    str(e.get('CompanyId', '')),
-                    str(e.get('Id', '')),
-                    str(e.get('DepartmentId', '')),
-                    str(e.get('TypeId', '')),
-                    str(e.get('Sex', '')),
-                    str(e.get('EmployeePosition', '')),
-                    str(e.get('EmploymentTypeId', '')),
-                ],
-                (datetime.today() - parse_date(e['HireDate'])).days
-                )
-    '''
-    #employee_days_employed.add_metric([],20)
-    #yield employee_days_employed
-
-    # CUSTOMERS #
-
-    customers = GaugeMetricFamily(
-        'workbook_customer_active_jobs',
-        'No of active jobs for Workbook customer',
-        labels=[
-            "customer_id",
-            "type_id",
-            "responsible_employee_id",
-            "payment_term_id",
-            "name",
-            ]
-        )
-
-    try:
-        result = self.wb.get_costumers(Active=True)
-    except Exception as e:
-        print("Could not get customers with error: {}".format(e))
-    else:
-        for c in result:
-
-            try:
-                n = wb_customers[c['Id']]['no_of_jobs']
-            except KeyError:
-                n = 0
-            
-            customers.add_metric(
-                [
-                    str(c.get('Id', '')),
-                    str(c.get('TypeId', '')),
-                    str(c.get('ResponsibleEmployeeId', '')),
-                    str(c.get('PaymentTermId', '')),
-                    str(c.get('Name', '')),
-                ],
-                n
+        # CUSTOMERS #
+    
+        customers = GaugeMetricFamily(
+            'workbook_customer_active_jobs',
+            'No of active jobs for Workbook customer',
+            labels=[
+                "customer_id",
+                "type_id",
+                "responsible_employee_id",
+                "payment_term_id",
+                "name",
+                ]
             )
-
-
-        #yield customers
     
-    #print(wb_customers)
+        try:
+            result = self.wb.get_costumers(Active=True)
+        except Exception as e:
+            print("Could not get customers with error: {}".format(e))
+        else:
+            for c in result:
     
-    # PROBLEMS WITH WORKBOOK? #
-
-    metric = GaugeMetricFamily(
-        'workbook_up',
-        'Is data beeing pulled from Workbook'
-        )
-
-    if wb_error:
-        metric.add_metric([], 0)
-    else:
-        metric.add_metric([], 1)
-
-    yield metric
+                try:
+                    n = wb_customers[c['Id']]['no_of_jobs']
+                except KeyError:
+                    n = 0
+                
+                customers.add_metric(
+                    [
+                        str(c.get('Id', '')),
+                        str(c.get('TypeId', '')),
+                        str(c.get('ResponsibleEmployeeId', '')),
+                        str(c.get('PaymentTermId', '')),
+                        str(c.get('Name', '')),
+                    ],
+                    n
+                )
+    
+    
+            #yield customers
+        
+        #print(wb_customers)
+        
+        # PROBLEMS WITH WORKBOOK? #
+    
+        metric = GaugeMetricFamily(
+            'workbook_up',
+            'Is data beeing pulled from Workbook'
+            )
+    
+        if wb_error:
+            metric.add_metric([], 0)
+        else:
+            metric.add_metric([], 1)
+    
+        yield metric
 
 
 def parse_args():
