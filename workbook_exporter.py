@@ -7,7 +7,7 @@ import random
 import time
 
 from prometheus_client import start_http_server, Summary
-from prometheus_client.core import GaugeMetricFamily, REGISTRY
+from prometheus_client.core import GaugeMetricFamily, HistogramMetricFamily, REGISTRY
 import workbook_api
 
 # The string to use when converting times in Workbook
@@ -51,6 +51,52 @@ class WorkbookCollector(object):
 
     # Assume no problems with getting data from Workbook
     wb_error = False
+    
+    # EMPLOYEES #
+    
+    for company_id in companies.keys():
+        try:
+            # Get active employees
+            employees = self.wb.get_employees(Active=True,CompanyId=company_id)
+        except Exception:
+            print("Could not get WB employees with error: {}".format(e))
+            wb_error = True
+        else:
+            data = {
+                90: 0,
+                180: 0,
+                365: 0,
+                2*365: 0,
+                5*365: 0,
+                float("inf"): 0
+                }
+            # The sum of all days employeed
+            days_sum = 0
+            # Add data from WB
+            for e in employees:
+                x = (datetime.today() - parse_date(e['HireDate'])).days
+                days_sum += x
+                for key in data.keys():
+                    if x <= key:
+                        data[key] += 1
+    
+            # Add data to buckets list
+            buckets = []
+            for key in sorted(data.keys()):
+                # Calculate bucket name
+                if key < float("inf"):
+                    bucket_name = str(key)
+                else:
+                    bucket_name = "+Inf"
+                # Append bucket data [name, value]
+                buckets.append([bucket_name, data[key]])
+            
+            # Build metric
+            h = HistogramMetricFamily('workbook_employees_days_employed', 'Bar', labels=['company_id'])
+            h.add_metric([str(company_id)], buckets, days_sum)
+            yield h
+            #print(buckets)
+    return
 
     # CREDIT #
 
@@ -233,7 +279,8 @@ class WorkbookCollector(object):
 
     # EMPLOYEES #
 
-    employee_days_employed = GaugeMetricFamily(
+    '''
+    employee_days_employed_o = GaugeMetricFamily(
         'workbook_employee_days_employed',
         'Days since the employee was hired',
         labels=[
@@ -245,7 +292,18 @@ class WorkbookCollector(object):
             "position_id",
             "employment_type_id",
             ])
+    '''
 
+    '''
+    employees_days_employed = Histogram(
+        'workbook_employees_days_employed',
+        'Days passed since employment began'
+        #labels=[],
+        #buckets=(90, 365, 2 * 365, float("inf"))
+        )
+    '''
+
+    '''
     try:
         # Get active employees
         employees = self.wb.get_employees(Active=True)
@@ -266,8 +324,9 @@ class WorkbookCollector(object):
                 ],
                 (datetime.today() - parse_date(e['HireDate'])).days
                 )
-
-        #yield employee_days_employed
+    '''
+    #employee_days_employed.add_metric([],20)
+    #yield employee_days_employed
 
     # CUSTOMERS #
 
@@ -377,7 +436,7 @@ def main():
                 args.workbook_password
                 )
             )
-        
+
         # Start up the server to expose the metrics.
         start_http_server(8000)
         
