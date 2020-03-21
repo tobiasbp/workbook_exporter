@@ -34,6 +34,40 @@ def parse_date(wb_time):
     '''
     return datetime.strptime(wb_time, TIME_FORMAT)
     
+def data_to_histogram(observations, buckets):
+    '''
+    Returns a list of buckets with values and the sum of the observations
+    observations: A list of numbers
+    buckets: A list of bucket values
+    '''
+    
+    # Convert buckets to a dict with bucket values as keys
+    buckets = {v:0 for v in buckets}
+
+    # Add key "infinite" if missing
+    if not float("inf") in buckets.keys():
+        buckets[float("inf")] = 0
+    
+    # Sort observations in to the bucket dict
+    for o in observations:
+        for key in sorted(buckets.keys()):
+            if o <= key:
+                buckets[key] += 1
+
+    # List holding lists of [bucket_name, value]
+    buckets_list = []
+    
+    # Add the bucket data to the buckets_list
+    for key in sorted(buckets.keys()):
+        # Calculate bucket name
+        if key < float("inf"):
+            bucket_name = str(key)
+        else:
+            bucket_name = "+Inf"
+        # Append bucket data [name, value]
+        buckets_list.append([bucket_name, buckets[key]])
+
+    return(buckets_list, sum(observations))
 
 class WorkbookCollector(object):
 
@@ -53,7 +87,7 @@ class WorkbookCollector(object):
     wb_error = False
     
     # EMPLOYEES #
-    
+
     for company_id in companies.keys():
         try:
             # Get active employees
@@ -62,40 +96,27 @@ class WorkbookCollector(object):
             print("Could not get WB employees with error: {}".format(e))
             wb_error = True
         else:
-            data = {
-                90: 0,
-                180: 0,
-                365: 0,
-                2*365: 0,
-                5*365: 0,
-                float("inf"): 0
-                }
-            # The sum of all days employeed
-            days_sum = 0
-            # Add data from WB
+            # Gather observations (Days since employment)
+            observations = []
             for e in employees:
-                x = (datetime.today() - parse_date(e['HireDate'])).days
-                days_sum += x
-                for key in data.keys():
-                    if x <= key:
-                        data[key] += 1
-    
-            # Add data to buckets list
-            buckets = []
-            for key in sorted(data.keys()):
-                # Calculate bucket name
-                if key < float("inf"):
-                    bucket_name = str(key)
-                else:
-                    bucket_name = "+Inf"
-                # Append bucket data [name, value]
-                buckets.append([bucket_name, data[key]])
+                observations.append((datetime.today() - parse_date(e['HireDate'])).days)
             
-            # Build metric
-            h = HistogramMetricFamily('workbook_employees_days_employed', 'Bar', labels=['company_id'])
-            h.add_metric([str(company_id)], buckets, days_sum)
+            # Get buckets and sum of observations
+            buckets, bucket_sum = data_to_histogram(
+                observations,
+                [90, 180, 365, 2*365, 5*365]
+                )
+
+            # Create histogram
+            h = HistogramMetricFamily(
+                'workbook_employees_days_employed',
+                'Days since employment',
+                labels=['company_id'])
+            # Add date
+            h.add_metric([str(company_id)], buckets, bucket_sum)
+            # Report
             yield h
-            #print(buckets)
+
     return
 
     # CREDIT #
