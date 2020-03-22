@@ -124,7 +124,7 @@ class WorkbookCollector(object):
         wb_error = False
         
         # EMPLOYEES #
-                
+
         for company_id in self.companies.keys():
             try:
                 # Get active employees
@@ -153,9 +153,68 @@ class WorkbookCollector(object):
                 h.add_metric([str(company_id)], buckets, bucket_sum)
                 # Report
                 yield h
-    
+
+        # JOBS #
+        for company_id in self.companies.keys():
+            try:
+                # Get active employees
+                #employees = self.wb.get_employees(Active=True,CompanyId=company_id)
+                jobs = self.wb.get_jobs(Status=ACTIVE_JOBS, CompanyId=company_id)
+            except Exception:
+                print("Could not get WB jobs with error: {}".format(e))
+                wb_error = True
+            else:
+                # Gather observations (Days since employment)
+                observations = []
+                no_of_billable_jobs = 0
+                for j in jobs:
+                    # Time job was created
+                    date_created = parse_date(j.get('CreateDate'))
+                    # End date for job
+                    date_end = parse_date(j.get('EndDate'))
+                    # Add observation
+                    observations.append((date_end - datetime.today()).days)
+                    # Register billable job
+                    if j.get('Billable'):
+                        no_of_billable_jobs += 1
+                
+                # Get buckets and sum of observations
+                buckets, bucket_sum = data_to_histogram(
+                    observations,
+                    [30, 2*30, 6*30, 365]
+                    )
+                # Job age histogram
+                h = HistogramMetricFamily(
+                    'workbook_jobs_days_old',
+                    'Days since job was created',
+                    labels=['company_id'])
+                # Add data
+                h.add_metric([str(company_id)], buckets, bucket_sum)
+                yield h
+                # Billable jobs
+                billable_jobs = GaugeMetricFamily(
+                    'workbook_billable_jobs',
+                    'Number of billable jobs',
+                    labels=['company_id']
+                    )
+                billable_jobs.add_metric(
+                    [str(company_id)],
+                    no_of_billable_jobs
+                    )  
+                yield billable_jobs
+                # Total jobs
+                jobs_total = GaugeMetricFamily(
+                    'workbook_jobs_total',
+                    'Number of jobs',
+                    labels=['company_id']
+                    )
+                jobs_total.add_metric(
+                    [str(company_id)],
+                    len(jobs)
+                    )  
+                yield jobs_total
+
         return
-    
         # CREDIT #
     
         credit_due = GaugeMetricFamily(
@@ -269,7 +328,7 @@ class WorkbookCollector(object):
             for d in result:
                 departments[d['CompanyId']][d['Id']] = d['Name']
             print(departments)
-    
+
         # JOBS #
     
         job_age_days = GaugeMetricFamily(
