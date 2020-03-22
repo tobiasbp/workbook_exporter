@@ -165,7 +165,10 @@ class WorkbookCollector(object):
                 wb_error = True
             else:
                 # Gather observations (Days since employment)
-                observations = []
+                observations = {
+                    'billable': [],
+                    'non_billable': []
+                    }
                 no_of_billable_jobs = 0
                 for j in jobs:
                     # Time job was created
@@ -173,24 +176,42 @@ class WorkbookCollector(object):
                     # End date for job
                     date_end = parse_date(j.get('EndDate'))
                     # Add observation
-                    observations.append((date_end - datetime.today()).days)
+                    if j.get('Billable'):
+                        observations['billable'].append((date_end - datetime.today()).days)
+                    else:
+                        observations['non_billable'].append((date_end - datetime.today()).days)
                     # Register billable job
                     if j.get('Billable'):
                         no_of_billable_jobs += 1
                 
-                # Get buckets and sum of observations
+                # Histogram billable
                 buckets, bucket_sum = data_to_histogram(
-                    observations,
+                    observations['billable'],
                     [30, 2*30, 6*30, 365]
                     )
                 # Job age histogram
                 h = HistogramMetricFamily(
                     'workbook_jobs_days_old',
                     'Days since job was created',
-                    labels=['company_id'])
+                    labels=['company_id', 'billable'])
                 # Add data
-                h.add_metric([str(company_id)], buckets, bucket_sum)
+                h.add_metric([str(company_id), '1'], buckets, bucket_sum)
                 yield h
+
+                # Histogram non billable
+                buckets, bucket_sum = data_to_histogram(
+                    observations['non_billable'],
+                    [30, 2*30, 6*30, 365]
+                    )
+                # Job age histogram
+                h = HistogramMetricFamily(
+                    'workbook_jobs_days_old',
+                    'Days since job was created',
+                    labels=['company_id', 'billable'])
+                # Add data
+                h.add_metric([str(company_id), '0'], buckets, bucket_sum)
+                yield h
+                
                 # Billable jobs
                 billable_jobs = GaugeMetricFamily(
                     'workbook_billable_jobs',
