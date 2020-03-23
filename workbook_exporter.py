@@ -77,42 +77,6 @@ class WorkbookCollector(object):
           # Workbook API object
           self.wb = workbook_api.WorkbookAPI(wb_url, wb_user, wb_pass)
 
-
-    def employee_days(self):
-    
-        wb_error = False
-        
-        for company_id in self.companies.keys():
-            try:
-                # Get active employees
-                employees = self.wb.get_employees(Active=True,CompanyId=company_id)
-            except Exception:
-                print("Could not get WB employees with error: {}".format(e))
-                wb_error = True
-            else:
-                # Gather observations (Days since employment)
-                observations = []
-                for e in employees:
-                    observations.append((datetime.today() - parse_date(e['HireDate'])).days)
-                
-                # Get buckets and sum of observations
-                buckets, bucket_sum = data_to_histogram(
-                    observations,
-                    [3*30, 5*30, 2*12*30+9*30, 5*12*30+8*30, 8*12*30+7*30]
-                    )
-    
-                # Create histogram
-                h = HistogramMetricFamily(
-                    'workbook_employees_days_employed',
-                    'Days since employment',
-                    labels=['company_id'])
-                # Add date
-                h.add_metric([str(company_id)], buckets, bucket_sum)
-                # Report
-                yield h
-                #return h
-
-
     def collect(self):
     
         # A dictionary mapping id to ISO name
@@ -169,7 +133,7 @@ class WorkbookCollector(object):
                     # Update data if this entry is newer than existing
                     # date, but not in the future
                     if new_date > existing_date and new_date <= datetime.now():
-                    price_dict[c_id][p['EmployeeId']] = p
+                        price_dict[c_id][p['EmployeeId']] = p
                 else:
                     # Add missing date
                     price_dict[c_id][p['EmployeeId']] = p
@@ -674,7 +638,7 @@ def main():
         # Generate some requests.
         while True:
           pass
-          #process_request(random.random())
+          process_request(random.random())
 
     except KeyboardInterrupt:
         print(" Interrupted by keyboard")
