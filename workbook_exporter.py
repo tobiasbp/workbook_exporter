@@ -123,13 +123,28 @@ class WorkbookCollector(object):
         # Assume no problems with getting data from Workbook
         wb_error = False
         
-        # EMPLOYEES #
+        # Buckets for histograms
+        days_employed_buckets = [3*30, 5*30, 2*12*30+9*30, 5*12*30+8*30, 8*12*30+7*30]
+        job_age_buckets = [30, 2*30, 6*30, 365]
 
         for company_id in self.companies.keys():
             try:
                 # Get active employees
+                prices = self.wb.get_employee_prices_hour()
+            except Exception as e:
+                print("Could not get WB employees prices with error: {}".format(e))
+                wb_error = True
+            else:
+                for p in prices:
+                    #print(p)
+                    pass
+
+        # EMPLOYEES #
+        for company_id in self.companies.keys():
+            try:
+                # Get active employees
                 employees = self.wb.get_employees(Active=True,CompanyId=company_id)
-            except Exception:
+            except Exception as e:
                 print("Could not get WB employees with error: {}".format(e))
                 wb_error = True
             else:
@@ -138,10 +153,10 @@ class WorkbookCollector(object):
                 for e in employees:
                     observations.append((datetime.today() - parse_date(e['HireDate'])).days)
                 
-                # Get buckets and sum of observations
+                # Get buckets ands sum of observations
                 buckets, bucket_sum = data_to_histogram(
                     observations,
-                    [3*30, 5*30, 2*12*30+9*30, 5*12*30+8*30, 8*12*30+7*30]
+                    days_employed_buckets
                     )
     
                 # Create histogram
@@ -160,7 +175,7 @@ class WorkbookCollector(object):
                 # Get active employees
                 #employees = self.wb.get_employees(Active=True,CompanyId=company_id)
                 jobs = self.wb.get_jobs(Status=ACTIVE_JOBS, CompanyId=company_id)
-            except Exception:
+            except Exception as e:
                 print("Could not get WB jobs with error: {}".format(e))
                 wb_error = True
             else:
@@ -187,9 +202,9 @@ class WorkbookCollector(object):
                 # Histogram billable
                 buckets, bucket_sum = data_to_histogram(
                     observations['billable'],
-                    [30, 2*30, 6*30, 365]
+                    job_age_buckets
                     )
-                # Job age histogram
+                # Job age histogram billable
                 h = HistogramMetricFamily(
                     'workbook_jobs_days_old',
                     'Days since job was created',
@@ -201,9 +216,9 @@ class WorkbookCollector(object):
                 # Histogram non billable
                 buckets, bucket_sum = data_to_histogram(
                     observations['non_billable'],
-                    [30, 2*30, 6*30, 365]
+                    job_age_buckets
                     )
-                # Job age histogram
+                # Job age histogram non billable
                 h = HistogramMetricFamily(
                     'workbook_jobs_days_old',
                     'Days since job was created',
@@ -212,7 +227,8 @@ class WorkbookCollector(object):
                 h.add_metric([str(company_id), '0'], buckets, bucket_sum)
                 yield h
                 
-                # Billable jobs
+                # FIXME: This is allready in the buckets (count)
+                # No of Billable jobs
                 billable_jobs = GaugeMetricFamily(
                     'workbook_billable_jobs',
                     'Number of billable jobs',
@@ -235,6 +251,8 @@ class WorkbookCollector(object):
                     )  
                 yield jobs_total
 
+
+            
         return
         # CREDIT #
     
