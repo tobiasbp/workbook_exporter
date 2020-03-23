@@ -153,40 +153,38 @@ class WorkbookCollector(object):
             price_dict = {c_id:{} for c_id in self.companies.keys()}
             #print(price_dict)
             for p in prices:
+                # FIXME: We should abort if this ID is not in our
+                # company list
                 c_id = employees[p['EmployeeId']]['CompanyId']
-                #print(c_id)
-                #print(employees[p['EmployeeId']]['EmployeeName'])
-                #print(employees[p['EmployeeId']]['Name'])
-                #try:
-                #  print("AccountType:", employees[p['EmployeeId']]['UserAccountTypeId'])
-                #except:
-                #  print("No account type")
-                #print("Type:", employees[p['EmployeeId']]['EmploymentTypeId'])
-                #print("Position:", employees[p['EmployeeId']]['EmployeePosition'])
-                #print("Company:", employees[p['EmployeeId']]['CompanyId'])
+                
+                # If we allready have data on the current employee
+                # We may need to update the price
                 if price_dict[c_id].get(p['EmployeeId']):
-                  # Potentially update existing data
-                  existing_date = parse_date(
+                    # Date for currently known data
+                    existing_date = parse_date(
                     price_dict[c_id][p['EmployeeId']]['ValidFrom']
                     )
-                  new_date = parse_date(p['ValidFrom'])
-                  # Update data if this entry is newer than existing
-                  # date, but not in the future
-                  if new_date > existing_date and new_date <= datetime.now():
+                    # Dato for this price
+                    new_date = parse_date(p['ValidFrom'])
+                    # Update data if this entry is newer than existing
+                    # date, but not in the future
+                    if new_date > existing_date and new_date <= datetime.now():
                     price_dict[c_id][p['EmployeeId']] = p
                 else:
-                  # Add missing date
-                  price_dict[c_id][p['EmployeeId']] = p
-
+                    # Add missing date
+                    price_dict[c_id][p['EmployeeId']] = p
+                
             # Loop through company price dicts
             for c_id, prices in price_dict.items():
-              #print("Company:", c_id)
+              # FIXME: Make sure the company is in our list
+              # It could possible be changed from config
               # Store observations for company here
               observations = {
                 'Profit': [],
                 'HoursCost': [],
                 'HoursSale': []
                 }
+              # Loop price data, and add to observations dicts
               for e_id, p in prices.items():
                 for field in observations.keys():
                   # Add observation if present
