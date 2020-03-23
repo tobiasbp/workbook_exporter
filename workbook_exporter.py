@@ -36,10 +36,11 @@ def parse_date(wb_time):
 
 
 def data_to_histogram(observations, buckets):
-    '''
-    Returns a list of buckets with values and the sum of the observations
-    observations: A list of numbers
-    buckets: A list of bucket values
+    '''Returns a list of buckets with values and the sum of the observations
+    
+    Keyword arguments:
+    observations (List): A list of numbers
+    buckets (List): A list of bucket values
     '''
     
     # Convert buckets to a dict with bucket values as keys
@@ -119,26 +120,130 @@ class WorkbookCollector(object):
     
         # A dictionary mapping id to company name
         self.companies = {c['Id']:c['Name'] for c in self.wb.get_companies(active=True)}
-    
+
+        # A dictionary mapping IDs to employees
+        employees = {e['Id']:e for e in self.wb.get_employees(Active=True)}
+        #employees = {e['Id']:e for e in self.wb.get_resources(
+        #  TypeId=[2], Active=True, )
+        #  }
+
         # Assume no problems with getting data from Workbook
         wb_error = False
-        
+
+
         # Buckets for histograms
         days_employed_buckets = [3*30, 5*30, 2*12*30+9*30, 5*12*30+8*30, 8*12*30+7*30]
         job_age_buckets = [30, 2*30, 6*30, 365]
+        profit_buckets = [0.2, 0.4, 0.6, 0.8]
+        hours_sale_buckets = [500, 1000, 1500, 2000]
+        hours_cost_buckets = [250, 500, 750, 1000]
 
-        for company_id in self.companies.keys():
-            try:
-                # Get active employees
-                prices = self.wb.get_employee_prices_hour()
-            except Exception as e:
-                print("Could not get WB employees prices with error: {}".format(e))
-                wb_error = True
-            else:
-                for p in prices:
-                    #print(p)
-                    pass
+        #for company_id in self.companies.keys():
+        try:
+            # Get prices for active employees
+            prices = self.wb.get_employee_prices_hour(ActiveEmployees=True)
+        except Exception as e:
+            print("Could not get WB employees prices with error: {}".format(e))
+            wb_error = True
+        else:
+            # A dict with company id as key for dicts with EmployeeId as key.
+            # An employee can have more than 1 entry.
+            # Only store the newest. They have ValidFrom date.
+            # We don't know the company IDs  
+            price_dict = {c_id:{} for c_id in self.companies.keys()}
+            print(price_dict)
+            for p in prices:
+                c_id = employees[p['EmployeeId']]['CompanyId']
+                #print(c_id)
+                #print(employees[p['EmployeeId']]['EmployeeName'])
+                #print(employees[p['EmployeeId']]['Name'])
+                #try:
+                #  print("AccountType:", employees[p['EmployeeId']]['UserAccountTypeId'])
+                #except:
+                #  print("No account type")
+                #print("Type:", employees[p['EmployeeId']]['EmploymentTypeId'])
+                #print("Position:", employees[p['EmployeeId']]['EmployeePosition'])
+                #print("Company:", employees[p['EmployeeId']]['CompanyId'])
+                if price_dict[c_id].get(p['EmployeeId']):
+                  # Potentially update existing data
+                  existing_date = parse_date(
+                    price_dict[c_id][p['EmployeeId']]['ValidFrom']
+                    )
+                  new_date = parse_date(p['ValidFrom'])
+                  # Update data if this entry is newer than existing
+                  # date, but not in the future
+                  if new_date > existing_date and new_date <= datetime.now():
+                    price_dict[c_id][p['EmployeeId']] = p
+                else:
+                  # Add missing date
+                  price_dict[c_id][p['EmployeeId']] = p
 
+            # Loop through company price dicts
+            for c_id, prices in price_dict.items():
+              print("Company:", c_id)
+              # Store observations for company here
+              observations = {
+                'Profit': [],
+                'HoursCost': [],
+                'HoursSale': []
+                }
+              for e_id, p in prices.items():
+                for field in observations.keys():
+                  # Add observation if present
+                  if p.get(field):
+                    observations[field].append(p.get(field))
+
+              # PROFIT #
+
+              # Get buckets ands sum of observations
+              buckets, bucket_sum = data_to_histogram(
+                  observations['Profit'],
+                  profit_buckets
+                  )
+              # Create histogram
+              h = HistogramMetricFamily(
+                'workbook_employees_profit_percent',
+                'Estimated profit in percent',
+                labels=['company_id'])
+              # Add data
+              h.add_metric([str(c_id)], buckets, bucket_sum)
+              yield h
+
+              # HOURS SALE #
+
+              # Get buckets ands sum of observations
+              buckets, bucket_sum = data_to_histogram(
+                  observations['HoursSale'],
+                  hours_sale_buckets
+                  )
+              # Create histogram
+              h = HistogramMetricFamily(
+                'workbook_employees_hours_sale',
+                'Estimated sales price for 1 hours work',
+                labels=['company_id'])
+              # Add data
+              h.add_metric([str(c_id)], buckets, bucket_sum)
+              yield h
+
+              # HOURS COST #
+
+              # Get buckets ands sum of observations
+              buckets, bucket_sum = data_to_histogram(
+                  observations['HoursCost'],
+                  hours_cost_buckets
+                  )
+              # Create histogram
+              h = HistogramMetricFamily(
+                'workbook_employees_hours_cost',
+                'Estimated cost of 1 hours work',
+                labels=['company_id'])
+              # Add data
+              h.add_metric([str(c_id)], buckets, bucket_sum)
+              yield h
+
+              print(observations)
+
+        return
         # EMPLOYEES #
         for company_id in self.companies.keys():
             try:
@@ -300,7 +405,7 @@ class WorkbookCollector(object):
     
             yield credit_due
             yield credit_total
-    
+
         # DEBIT #
     
         debit_due = GaugeMetricFamily(
@@ -346,11 +451,11 @@ class WorkbookCollector(object):
                 for cur, data in data.items():
                     debit_due.add_metric([str(company_id), cur], int(data['due']))
                     debit_total.add_metric([str(company_id), cur], int(data['total']))
-    
+
             yield debit_due
             yield debit_total
-    
-    
+
+
         # A dictionary with customer_id as keys
         wb_customers = {}
         
@@ -369,7 +474,7 @@ class WorkbookCollector(object):
             print(departments)
 
         # JOBS #
-    
+
         job_age_days = GaugeMetricFamily(
             'workbook_job_age_days',
             'Days since job was created',
@@ -388,8 +493,7 @@ class WorkbookCollector(object):
                 "billable",
                 "days_to_end_date",
                 ])
-    
-    
+
         try:
             result = self.wb.get_jobs(Status=ACTIVE_JOBS)
         except Exception as e:
@@ -598,7 +702,8 @@ def main():
         
         # Generate some requests.
         while True:
-            process_request(random.random())
+          pass
+          #process_request(random.random())
 
     except KeyboardInterrupt:
         print(" Interrupted by keyboard")
