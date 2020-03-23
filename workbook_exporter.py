@@ -151,7 +151,7 @@ class WorkbookCollector(object):
             # Only store the newest. They have ValidFrom date.
             # We don't know the company IDs  
             price_dict = {c_id:{} for c_id in self.companies.keys()}
-            print(price_dict)
+            #print(price_dict)
             for p in prices:
                 c_id = employees[p['EmployeeId']]['CompanyId']
                 #print(c_id)
@@ -180,7 +180,7 @@ class WorkbookCollector(object):
 
             # Loop through company price dicts
             for c_id, prices in price_dict.items():
-              print("Company:", c_id)
+              #print("Company:", c_id)
               # Store observations for company here
               observations = {
                 'Profit': [],
@@ -241,9 +241,7 @@ class WorkbookCollector(object):
               h.add_metric([str(c_id)], buckets, bucket_sum)
               yield h
 
-              print(observations)
 
-        return
         # EMPLOYEES #
         for company_id in self.companies.keys():
             try:
@@ -331,33 +329,8 @@ class WorkbookCollector(object):
                 # Add data
                 h.add_metric([str(company_id), '0'], buckets, bucket_sum)
                 yield h
-                
-                # FIXME: This is allready in the buckets (count)
-                # No of Billable jobs
-                billable_jobs = GaugeMetricFamily(
-                    'workbook_billable_jobs',
-                    'Number of billable jobs',
-                    labels=['company_id']
-                    )
-                billable_jobs.add_metric(
-                    [str(company_id)],
-                    no_of_billable_jobs
-                    )  
-                yield billable_jobs
-                # Total jobs
-                jobs_total = GaugeMetricFamily(
-                    'workbook_jobs_total',
-                    'Number of jobs',
-                    labels=['company_id']
-                    )
-                jobs_total.add_metric(
-                    [str(company_id)],
-                    len(jobs)
-                    )  
-                yield jobs_total
 
 
-            
         return
         # CREDIT #
     
