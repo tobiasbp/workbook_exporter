@@ -119,6 +119,7 @@ class WorkbookCollector(object):
         
         # FIXME: Credit/Debit buckets should probably be currency dependant
         credit_buckets = [-50000, -25000, -10000, 0, 10000, 25000, 50000]
+        debit_buckets = [-50000, -25000, -10000, 0, 10000, 25000, 50000, 100000]
         reporting_currency_id = 'DKK'
 
         #for company_id in self.companies.keys():
@@ -315,105 +316,48 @@ class WorkbookCollector(object):
                    [str(company_id), 'DKK'])
 
 
+        for company_id in self.companies.keys():
+            try:
+                debtors = self.wb.get_debtors_balance(company_id=company_id)
+            except Exception as e:
+                print("Error: {}".format(e))
+                wb_error = True
+            else:
+                observations = {
+                    'total': [],
+                    'due': [],
+                    }
+                # Run through creditors for current company
+                for d in debtors:
+                    total = d.get('RemainingAmountTotal', None)
+                    due = d.get('RemainingAmountDue', None)
+                    # FIXME: Convert currency
+                    if due:
+                        observations['due'].append(due)
+                    if total:
+                        observations['total'].append(total)
+                #print(observations)
+                # FIXME: Currency!
+                # Debit total
+                yield build_histogram(
+                   observations['total'],
+                   debit_buckets,
+                   'workbook_debit_total',
+                   'Debit total',
+                   ['company_id', 'currency'],
+                   [str(company_id), 'DKK'])
+
+                # Credit due
+                yield build_histogram(
+                   observations['due'],
+                   debit_buckets,
+                   'workbook_debit_due',
+                   'Debit due',
+                   ['company_id', 'currency'],
+                   [str(company_id), 'DKK'])
+
+
         return
-        #return
-        # CREDIT #
-    
-        credit_due = GaugeMetricFamily(
-            'workbook_credit_due',
-            'Credit due',
-            labels=['company_id', 'currency']
-            )
-
-        credit_total = GaugeMetricFamily(
-            'workbook_credit_total',
-            'Total credit',
-            labels=['company_id', 'currency']
-            )
-
-        try:
-            creditors = self.wb.get_creditors()
-        except Exception as e:
-            print("Error: {}".format(e))
-            wb_error = True
-        else:
-            # Create a dictionary with companies.
-            # Each company has dictionarys for each currency, with
-            # amount due and total
-            # company_id:CUR:due+total
-            credit = {company_id:{c:{'due':0.0, 'total':0.0} for c in currencies.values()} for company_id in self.companies.keys()}
-    
-            for c in creditors:
-                # Only get data from creditors with amounts
-                if c.get('RemainingAmountTotal'):
-                    # Get data
-                    currency = currencies[c['CurrencyId']]
-                    total = c.get('RemainingAmountTotal',0.0)
-                    due = c.get('RemainingAmountDue',0.0)
-                    
-                    # Update the dictionary
-                    credit[c['CompanyId']][currency]['due'] += due
-                    credit[c['CompanyId']][currency]['total'] += total
-    
-            # Run through the dictionary and add data to the metric
-            for company_id, data in credit.items():
-                for cur, data in data.items():
-                    credit_due.add_metric([str(company_id), cur], int(data['due']))
-                    credit_total.add_metric([str(company_id), cur], int(data['total']))
-    
-            yield credit_due
-            yield credit_total
-
-        return 
-        # DEBIT #
-    
-        debit_due = GaugeMetricFamily(
-            'workbook_debit_due',
-            'Debit due',
-            labels=['company_id', 'currency']
-            )
-    
-        debit_total = GaugeMetricFamily(
-            'workbook_debit_total',
-            'Total debit',
-            labels=['company_id', 'currency']
-            )
-    
-        try:
-            debtors = []
-            for i in companies.keys():
-                debtors += self.wb.get_debtors_balance(company_id=i)
-        except Exception as e:
-            print("Error: {}".format(e))
-            wb_error = True
-        else:
-            # Create a dictionary with companies.
-            # Each company has dictionarys for each currency, with
-            # amount due and total
-            # company_id:CUR:due+total
-            debit = {company_id:{c:{'due':0.0, 'total':0.0} for c in currencies.values()} for company_id in companies.keys()}
-    
-            for d in debtors:
-                # Only get data from debtors with amounts
-                if d.get('RemainingAmountTotal'):
-                    # Get data
-                    currency = currencies[d['CurrencyId']]
-                    total = d.get('RemainingAmountTotal',0.0)
-                    due = d.get('RemainingAmountDue',0.0)
-    
-                    # Update the dictionary
-                    debit[d['CompanyId']][currency]['due'] += due
-                    debit[d['CompanyId']][currency]['total'] += total
-    
-            # Run through the dictionary and add data to the metric
-            for company_id, data in debit.items():
-                for cur, data in data.items():
-                    debit_due.add_metric([str(company_id), cur], int(data['due']))
-                    debit_total.add_metric([str(company_id), cur], int(data['total']))
-
-            yield debit_due
-            yield debit_total
-
 
         # A dictionary with customer_id as keys
         wb_customers = {}
