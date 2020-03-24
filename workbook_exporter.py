@@ -71,6 +71,24 @@ def data_to_histogram(observations, buckets):
 
     return(buckets_list, sum(observations))
 
+def build_histogram(observations, buckets, name, desc, label_names, label_values):
+
+    # Histogram billable (Total)
+    bucket_values, buckets_sum = data_to_histogram(
+        observations,
+        buckets
+        )
+
+    # Job age histogram billable
+    h = HistogramMetricFamily(name, desc, labels=label_names)
+
+    # Add data
+    h.add_metric(label_values, bucket_values, buckets_sum)
+
+    # Return histogram with data
+    return h
+
+
 class WorkbookCollector(object):
 
     def __init__(self, wb_url, wb_user, wb_pass):
@@ -80,16 +98,13 @@ class WorkbookCollector(object):
     def collect(self):
     
         # A dictionary mapping id to ISO name
-        self.currencies = {c['Id']:c['Iso4127'] for c in self.wb.get_currencies()}
-    
+        currencies = {c['Id']:c['Iso4127'] for c in self.wb.get_currencies()}
+
         # A dictionary mapping id to company name
         self.companies = {c['Id']:c['Name'] for c in self.wb.get_companies(active=True)}
 
         # A dictionary mapping IDs to employees
         employees = {e['Id']:e for e in self.wb.get_employees(Active=True)}
-        #employees = {e['Id']:e for e in self.wb.get_resources(
-        #  TypeId=[2], Active=True, )
-        #  }
 
         # Assume no problems with getting data from Workbook
         wb_error = False
@@ -101,6 +116,10 @@ class WorkbookCollector(object):
         profit_buckets = [0.2, 0.4, 0.6, 0.8]
         hours_sale_buckets = [500, 1000, 1500, 2000]
         hours_cost_buckets = [250, 500, 750, 1000]
+        
+        # FIXME: Credit/Debit buckets should probably be currency dependant
+        credit_buckets = [-50000, -25000, -10000, 0, 10000, 25000, 50000]
+        reporting_currency_id = 'DKK'
 
         #for company_id in self.companies.keys():
         try:
@@ -237,8 +256,7 @@ class WorkbookCollector(object):
         # JOBS #
         for company_id in self.companies.keys():
             try:
-                # Get active employees
-                #employees = self.wb.get_employees(Active=True,CompanyId=company_id)
+                # Get active jobs
                 jobs = self.wb.get_jobs(Status=ACTIVE_JOBS, CompanyId=company_id)
             except Exception as e:
                 print("Could not get WB jobs with error: {}".format(e))
@@ -249,7 +267,7 @@ class WorkbookCollector(object):
                     'billable': [],
                     'non_billable': []
                     }
-                no_of_billable_jobs = 0
+                #no_of_billable_jobs = 0
                 for j in jobs:
                     # Time job was created
                     date_created = parse_date(j.get('CreateDate'))
@@ -261,9 +279,9 @@ class WorkbookCollector(object):
                     else:
                         observations['non_billable'].append((date_end - datetime.today()).days)
                     # Register billable job
-                    if j.get('Billable'):
-                        no_of_billable_jobs += 1
-                
+                    #if j.get('Billable'):
+                    #    no_of_billable_jobs += 1
+
                 # Histogram billable
                 buckets, bucket_sum = data_to_histogram(
                     observations['billable'],
@@ -293,7 +311,50 @@ class WorkbookCollector(object):
                 yield h
 
 
+        try:
+            # Get all creditors accross companies
+            creditors = self.wb.get_creditors()
+        except Exception as e:
+            print("Error: {}".format(e))
+            wb_error = True
+        else:
+            for company_id in self.companies.keys():
+                # Store credit observations here
+                observations = {
+                    'total': [],
+                    'due': [],
+                    }
+                # Run through creditors for current company
+                for c in [c for c in creditors if c['CompanyId'] == company_id]:
+                    total = c.get('RemainingAmountTotal', None)
+                    due = c.get('RemainingAmountDue', None)
+                    # FIXME: Convert currency
+                    if due:
+                        observations['due'].append(due)
+                    if total:
+                        observations['total'].append(total)
+
+                # Credit total
+                yield build_histogram(
+                   observations['total'],
+                   credit_buckets,
+                   'workbook_credit_total',
+                   'Amount owed',
+                   ['company_id', 'currency'],
+                   [str(company_id), 'DKK'])
+
+                # Credit due
+                yield build_histogram(
+                   observations['due'],
+                   credit_buckets,
+                   'workbook_credit_due',
+                   'Amount owed',
+                   ['company_id', 'currency'],
+                   [str(company_id), 'DKK'])
+
+
         return
+        #return
         # CREDIT #
     
         credit_due = GaugeMetricFamily(
@@ -301,13 +362,13 @@ class WorkbookCollector(object):
             'Credit due',
             labels=['company_id', 'currency']
             )
-    
+
         credit_total = GaugeMetricFamily(
             'workbook_credit_total',
             'Total credit',
             labels=['company_id', 'currency']
             )
-    
+
         try:
             creditors = self.wb.get_creditors()
         except Exception as e:
@@ -318,7 +379,7 @@ class WorkbookCollector(object):
             # Each company has dictionarys for each currency, with
             # amount due and total
             # company_id:CUR:due+total
-            credit = {company_id:{c:{'due':0.0, 'total':0.0} for c in currencies.values()} for company_id in companies.keys()}
+            credit = {company_id:{c:{'due':0.0, 'total':0.0} for c in currencies.values()} for company_id in self.companies.keys()}
     
             for c in creditors:
                 # Only get data from creditors with amounts
@@ -341,6 +402,7 @@ class WorkbookCollector(object):
             yield credit_due
             yield credit_total
 
+        return 
         # DEBIT #
     
         debit_due = GaugeMetricFamily(
