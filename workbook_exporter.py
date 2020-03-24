@@ -228,6 +228,7 @@ class WorkbookCollector(object):
                    ['company_id'],
                    [str(company_id)])
 
+
         # JOBS #
         for company_id in self.companies.keys():
             try:
@@ -242,6 +243,10 @@ class WorkbookCollector(object):
                     'billable': [],
                     'non_billable': []
                     }
+                active_clients = {
+                    'billable': set(),
+                    'non_billable': set()
+                    }
                 #no_of_billable_jobs = 0
                 for j in jobs:
                     # Time job was created
@@ -251,8 +256,10 @@ class WorkbookCollector(object):
                     # Add observation
                     if j.get('Billable'):
                         observations['billable'].append((date_end - datetime.today()).days)
+                        active_clients['billable'].add(j['CustomerId'])
                     else:
                         observations['non_billable'].append((date_end - datetime.today()).days)
+                        active_clients['non_billable'].add(j['CustomerId'])
 
                 # Job age histogram (billable)
                 yield build_histogram(
@@ -272,6 +279,21 @@ class WorkbookCollector(object):
                    ['company_id', 'billable'],
                    [str(company_id), '0'])
 
+                cust_billable = GaugeMetricFamily(
+                    'workbook_active_customers_billable_jobs',
+                    'No of unique customers for billable active jobs',
+                    labels=["company_id"])
+                cust_billable.add_metric(
+                    [str(company_id)],
+                    len(active_clients['billable']))
+                yield cust_billable
+
+                cust_non_billable = GaugeMetricFamily(
+                    'workbook_active_customers_non_billable_jobs',
+                    'No of unique customers for non billable active jobs',
+                    labels=["company_id"])
+                cust_non_billable.add_metric([str(company_id)], len(active_clients['non_billable']))
+                yield cust_non_billable
 
         # CREDIT #
         try:
@@ -315,7 +337,7 @@ class WorkbookCollector(object):
                    ['company_id', 'currency'],
                    [str(company_id), 'DKK'])
 
-
+        # DEBIT #
         for company_id in self.companies.keys():
             try:
                 debtors = self.wb.get_debtors_balance(company_id=company_id)
@@ -376,120 +398,6 @@ class WorkbookCollector(object):
                 departments[d['CompanyId']][d['Id']] = d['Name']
             print(departments)
 
-        # JOBS #
-
-        job_age_days = GaugeMetricFamily(
-            'workbook_job_age_days',
-            'Days since job was created',
-            labels=[
-                "job_id",
-                "name",
-                "status_id",
-                "company_id",
-                "created",
-                "type_id",
-                "customer_id",
-                "customer_name",
-                "department_id",
-                "department_name",
-                "retainer",
-                "billable",
-                "days_to_end_date",
-                ])
-
-        try:
-            result = self.wb.get_jobs(Status=ACTIVE_JOBS)
-        except Exception as e:
-            print(e)
-            wb_error = True
-        else:
-            for j in result:
-                
-                # Maintain dict with no of jobs pr. customer
-                if not j.get('CustomerId') in wb_customers.keys():
-                    wb_customers[j.get('CustomerId')] = {'no_of_jobs': 0}
-                else:
-                    wb_customers[j.get('CustomerId')]['no_of_jobs'] += 1
-                    
-                # Time job was created
-                date_created = parse_date(j.get('CreateDate'))
-                
-                # End date for job
-                date_end = parse_date(j.get('EndDate'))
-                
-                # Add the metric(lables, value)
-                job_age_days.add_metric(
-                    [str(j.get('Id')),
-                        j.get('JobName'),
-                        str(j.get('StatusId')),
-                        str(j.get('CompanyId')),
-                        str(j.get('CreateDate')),
-                        str(j.get('JobTypeId')),
-                        str(j.get('CustomerId')),
-                        str(j.get('CustomerName')),
-                        str(j.get('CompanyDepartmentId')),
-                        departments[j.get('CompanyId')][j.get('CompanyDepartmentId')],
-                        "1" if j.get('RetainerJob') else "0",
-                        "1" if j.get('Billable') else "0",
-                        str((date_end - datetime.today()).days)
-                        ],
-                    # Days since creation
-                    (datetime.today() - date_created).days
-                    )
-        
-        #yield job_age_days
-    
-    
-        # EMPLOYEES #
-    
-        '''
-        employee_days_employed_o = GaugeMetricFamily(
-            'workbook_employee_days_employed',
-            'Days since the employee was hired',
-            labels=[
-                "company_id",
-                "employee_id",
-                "department_id",
-                "type_id",
-                "sex_id",
-                "position_id",
-                "employment_type_id",
-                ])
-        '''
-    
-        '''
-        employees_days_employed = Histogram(
-            'workbook_employees_days_employed',
-            'Days passed since employment began'
-            #labels=[],
-            #buckets=(90, 365, 2 * 365, float("inf"))
-            )
-        '''
-    
-        '''
-        try:
-            # Get active employees
-            employees = self.wb.get_employees(Active=True)
-        except Exception:
-            print("Could not get WB employees with error: {}".format(e))
-            wb_error = True
-        else:
-            for e in employees:
-                employee_days_employed.add_metric(
-                    [
-                        str(e.get('CompanyId', '')),
-                        str(e.get('Id', '')),
-                        str(e.get('DepartmentId', '')),
-                        str(e.get('TypeId', '')),
-                        str(e.get('Sex', '')),
-                        str(e.get('EmployeePosition', '')),
-                        str(e.get('EmploymentTypeId', '')),
-                    ],
-                    (datetime.today() - parse_date(e['HireDate'])).days
-                    )
-        '''
-        #employee_days_employed.add_metric([],20)
-        #yield employee_days_employed
     
         # CUSTOMERS #
     
