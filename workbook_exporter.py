@@ -175,53 +175,34 @@ class WorkbookCollector(object):
                     observations[field].append(p.get(field))
 
               # PROFIT #
-
-              # Get buckets ands sum of observations
-              buckets, bucket_sum = data_to_histogram(
-                  observations['Profit'],
-                  profit_buckets
-                  )
-              # Create histogram
-              h = HistogramMetricFamily(
-                'workbook_employees_profit_percent',
-                'Estimated profit in percent',
-                labels=['company_id'])
-              # Add data
-              h.add_metric([str(c_id)], buckets, bucket_sum)
-              yield h
+              # FIXME: CURRENCY!
+              yield build_histogram(
+                observations['Profit'],
+                profit_buckets,
+                'workbook_employees_profit_ratio',
+                'Estimated sales price of 1 hours work',
+                ['company_id'],
+                [str(c_id)])
 
               # HOURS SALE #
-
-              # Get buckets ands sum of observations
-              buckets, bucket_sum = data_to_histogram(
-                  observations['HoursSale'],
-                  hours_sale_buckets
-                  )
-              # Create histogram
-              h = HistogramMetricFamily(
+              # FIXME: CURRENCY!
+              yield build_histogram(
+                observations['HoursSale'],
+                hours_sale_buckets,
                 'workbook_employees_hours_sale',
-                'Estimated sales price for 1 hours work',
-                labels=['company_id'])
-              # Add data
-              h.add_metric([str(c_id)], buckets, bucket_sum)
-              yield h
+                'Estimated sales price of 1 hours work',
+                ['company_id', 'currency'],
+                [str(c_id), 'DKK'])
 
               # HOURS COST #
-
-              # Get buckets ands sum of observations
-              buckets, bucket_sum = data_to_histogram(
-                  observations['HoursCost'],
-                  hours_cost_buckets
-                  )
-              # Create histogram
-              h = HistogramMetricFamily(
+              # FIXME: CURRENCY!
+              yield build_histogram(
+                observations['HoursCost'],
+                hours_cost_buckets,
                 'workbook_employees_hours_cost',
                 'Estimated cost of 1 hours work',
-                labels=['company_id'])
-              # Add data
-              h.add_metric([str(c_id)], buckets, bucket_sum)
-              yield h
-
+                ['company_id', 'currency'],
+                [str(c_id), 'DKK'])
 
         # EMPLOYEES #
         for company_id in self.companies.keys():
@@ -237,21 +218,14 @@ class WorkbookCollector(object):
                 for e in employees:
                     observations.append((datetime.today() - parse_date(e['HireDate'])).days)
                 
-                # Get buckets ands sum of observations
-                buckets, bucket_sum = data_to_histogram(
-                    observations,
-                    days_employed_buckets
-                    )
-    
-                # Create histogram
-                h = HistogramMetricFamily(
-                    'workbook_employees_days_employed',
-                    'Days since employment',
-                    labels=['company_id'])
-                # Add date
-                h.add_metric([str(company_id)], buckets, bucket_sum)
-                # Report
-                yield h
+                # Job age histogram (Non billable)
+                yield build_histogram(
+                   observations,
+                   days_employed_buckets,
+                   'workbook_employees_days_employed',
+                   'Days since employment',
+                   ['company_id'],
+                   [str(company_id)])
 
         # JOBS #
         for company_id in self.companies.keys():
@@ -278,39 +252,27 @@ class WorkbookCollector(object):
                         observations['billable'].append((date_end - datetime.today()).days)
                     else:
                         observations['non_billable'].append((date_end - datetime.today()).days)
-                    # Register billable job
-                    #if j.get('Billable'):
-                    #    no_of_billable_jobs += 1
 
-                # Histogram billable
-                buckets, bucket_sum = data_to_histogram(
-                    observations['billable'],
-                    job_age_buckets
-                    )
-                # Job age histogram billable
-                h = HistogramMetricFamily(
-                    'workbook_jobs_days_old',
-                    'Days since job was created',
-                    labels=['company_id', 'billable'])
-                # Add data
-                h.add_metric([str(company_id), '1'], buckets, bucket_sum)
-                yield h
+                # Job age histogram (billable)
+                yield build_histogram(
+                   observations['billable'],
+                   job_age_buckets,
+                   'workbook_jobs_age_days',
+                   'Days since job was created',
+                   ['company_id', 'billable'],
+                   [str(company_id), '1'])
 
-                # Histogram non billable
-                buckets, bucket_sum = data_to_histogram(
-                    observations['non_billable'],
-                    job_age_buckets
-                    )
-                # Job age histogram non billable
-                h = HistogramMetricFamily(
-                    'workbook_jobs_days_old',
-                    'Days since job was created',
-                    labels=['company_id', 'billable'])
-                # Add data
-                h.add_metric([str(company_id), '0'], buckets, bucket_sum)
-                yield h
+                # Job age histogram (Non billable)
+                yield build_histogram(
+                   observations['non_billable'],
+                   job_age_buckets,
+                   'workbook_jobs_age_days',
+                   'Days since job was created',
+                   ['company_id', 'billable'],
+                   [str(company_id), '0'])
 
 
+        # CREDIT #
         try:
             # Get all creditors accross companies
             creditors = self.wb.get_creditors()
