@@ -40,3 +40,7 @@ workbook_billable_jobs{company_id=""}
 # HELP workbook_jobs_total Number of jobs
 # TYPE workbook_jobs_total gauge
 workbook_jobs_total{company_id=""}
+
+# To do
+
+* Status of active jobs in buckets
