@@ -109,6 +109,9 @@ class WorkbookCollector(object):
         # A dictionary mapping IDs to departments
         departments = {d['Id']:d for d in self.wb.get_departments()}
 
+        # A dictionary mapping IDs to jobs
+        jobs = {j['Id']:j for j in self.wb.get_jobs(Status=ACTIVE_JOBS)}
+
         # Assume no problems with getting data from Workbook
         wb_error = False
         
@@ -151,6 +154,7 @@ class WorkbookCollector(object):
                         'total': 0,
                         'resource_ids': set(),
                         'job_ids': set(),
+                        'customer_ids': set()
                         }
 
         try:
@@ -163,17 +167,18 @@ class WorkbookCollector(object):
             for e in time_entries:
                 c_id = employees[e['ResourceId']]['CompanyId']
                 d_id = employees[e['ResourceId']]['DepartmentId']
-                #print(departments[d_id])
+                j_id = e['JobId']
+
+                if jobs.get(j_id):
+                    time_entries_data[c_id][d_id]['customer_ids'].add(jobs.get(j_id)['CustomerId'])
+
                 h = e.get('Hours', 0)
-
                 if e.get('Billable'):
-                  time_entries_data[c_id][d_id]['billable'] += h
-
+                    time_entries_data[c_id][d_id]['billable'] += h
                 time_entries_data[c_id][d_id]['total'] += h
 
                 time_entries_data[c_id][d_id]['resource_ids'].add(e.get('ResourceId'))
-                #time_entries_data[c_id][d_id]['customer_ids'].add(e.get('CustomerId'))
-                time_entries_data[c_id][d_id]['job_ids'].add(e.get('JobId'))
+                time_entries_data[c_id][d_id]['job_ids'].add(j_id)
 
             # Labels to use for the following metrics
             label_names = ['days','company_id', 'department_id']
@@ -208,6 +213,12 @@ class WorkbookCollector(object):
                       'workbook_time_entry_jobs_total',
                       'Number of jobs with time entries', labels=label_names)
                     g.add_metric(label_values, len(d_data['job_ids']))
+                    yield g
+
+                    g = GaugeMetricFamily(
+                      'workbook_time_entry_customers_total',
+                      'Number of customers with time entries', labels=label_names)
+                    g.add_metric(label_values, len(d_data['customer_ids']))
                     yield g
 
 
