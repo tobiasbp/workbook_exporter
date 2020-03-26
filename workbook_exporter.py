@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import random
 import time
@@ -106,8 +106,13 @@ class WorkbookCollector(object):
         # A dictionary mapping IDs to employees
         employees = {e['Id']:e for e in self.wb.get_employees(Active=True)}
 
+        # A dictionary mapping IDs to departments
+        departments = {d['Id']:d for d in self.wb.get_departments()}
+
         # Assume no problems with getting data from Workbook
         wb_error = False
+        
+        
 
 
         # Buckets for histograms
@@ -120,9 +125,84 @@ class WorkbookCollector(object):
         # FIXME: Credit/Debit buckets should probably be currency dependant
         credit_buckets = [-50000, -25000, -10000, 0, 10000, 25000, 50000]
         debit_buckets = [-50000, -25000, -10000, 0, 10000, 25000, 50000, 100000]
-        reporting_currency_id = 'DKK'
 
-        #for company_id in self.companies.keys():
+        reporting_currency_id = 'DKK'
+        # 1 = DKK
+        currency_id = 1
+
+        # Days to look in to the past for timeentries
+        time_entry_days = 7
+        
+        # TIME ENTRIES #
+        # Time entries don't have ClientIds
+        # FIxme: (We could look them up in jobs?)
+        # Time period to get time entries for (Time where work was done)
+        start_date = (datetime.today() - timedelta(days=time_entry_days)).isoformat()
+        end_date = datetime.today().isoformat()
+
+        # Store the data here
+        time_entries_data = {
+            'billable': 0,
+            'total': 0,
+            'resource_ids': set(),
+            #'customer_ids': set(),
+            'job_ids': set(),
+            }
+        try:
+          time_entries = self.wb.get_time_entries(
+            Start=start_date, End=end_date,HasTimeRegistration=True)
+        except Exception as e:
+            print("Could not get WB time entries with error: {}".format(e))
+            wb_error = True
+        else:
+            for e in time_entries:
+                h = e.get('Hours', 0)
+
+                if e.get('Billable'):
+                  time_entries_data['billable'] += h
+
+                time_entries_data['total'] += h
+
+                time_entries_data['resource_ids'].add(e.get('ResourceId'))
+                #time_entries_data['customer_ids'].add(e.get('CustomerId'))
+                time_entries_data['job_ids'].add(e.get('JobId'))
+
+            #print("Total hours:", time_entries_data['total'])
+            g = GaugeMetricFamily(
+              'workbook_time_entry_hours_total',
+              'Number of hours in total',
+              labels=['days'])
+            g.add_metric([str(time_entry_days)], time_entries_data['total'])
+            yield g
+
+            #print("Billable hours:", time_entries_data['billable'])
+            g = GaugeMetricFamily(
+              'workbook_time_entry_hours_billable',
+              'Number of billable hours',
+              labels=['days'])
+            g.add_metric([str(time_entry_days)], time_entries_data['billable'])
+            yield g
+
+            #print("Resources:", len(time_entries_data['resource_ids']))
+            g = GaugeMetricFamily(
+              'workbook_time_entry_people_total',
+              'Number of people having entered time entries',
+              labels=['days'])
+            g.add_metric([str(time_entry_days)], len(time_entries_data['resource_ids']))
+            yield g
+
+            #print("Jobs:", len(time_entries_data['job_ids']))
+            g = GaugeMetricFamily(
+              'workbook_time_entry_jobs_total',
+              'Number of jobs with time entries',
+              labels=['days'])
+            g.add_metric([str(time_entry_days)], len(time_entries_data['job_ids']))
+            yield g
+
+            # This is analysis. Don't report
+            #print("Billable hours % :", time_entries_data['billable']/time_entries_data['total'])
+
+        # EMPLOYEE PRICES #
         try:
             # Get prices for active employees
             prices = self.wb.get_employee_prices_hour(ActiveEmployees=True)
@@ -140,7 +220,7 @@ class WorkbookCollector(object):
                 # FIXME: We should abort if this ID is not in our
                 # company list
                 c_id = employees[p['EmployeeId']]['CompanyId']
-                
+
                 # If we allready have data on the current employee
                 # We may need to update the price
                 if price_dict[c_id].get(p['EmployeeId']):
@@ -157,7 +237,7 @@ class WorkbookCollector(object):
                 else:
                     # Add missing date
                     price_dict[c_id][p['EmployeeId']] = p
-                
+
             # Loop through company price dicts
             for c_id, prices in price_dict.items():
               # FIXME: Make sure the company is in our list
@@ -205,7 +285,7 @@ class WorkbookCollector(object):
                 ['company_id', 'currency'],
                 [str(c_id), 'DKK'])
 
-        # EMPLOYEES #
+        # EMPLOYEES DAYS EMPLOYED #
         for company_id in self.companies.keys():
             try:
                 # Get active employees
@@ -311,6 +391,7 @@ class WorkbookCollector(object):
                     }
                 # Run through creditors for current company
                 for c in [c for c in creditors if c['CompanyId'] == company_id]:
+                    # FIXME: Use conversion function here
                     total = c.get('RemainingAmountTotal', None)
                     due = c.get('RemainingAmountDue', None)
                     # FIXME: Convert currency
