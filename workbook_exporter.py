@@ -140,8 +140,10 @@ class WorkbookCollector(object):
         start_date = (datetime.today() - timedelta(days=time_entry_days)).isoformat()
         end_date = datetime.today().isoformat()
 
-        # Store the data here
-        time_entries_data = {
+        # Top key is company_id
+        time_entries_data = {}
+        for c_id in self.companies.keys():
+            time_entries_data[c_id] = {
             'billable': 0,
             'total': 0,
             'resource_ids': set(),
@@ -156,48 +158,48 @@ class WorkbookCollector(object):
             wb_error = True
         else:
             for e in time_entries:
+                c_id = employees[e['ResourceId']]['CompanyId']
                 h = e.get('Hours', 0)
 
                 if e.get('Billable'):
-                  time_entries_data['billable'] += h
+                  time_entries_data[c_id]['billable'] += h
 
-                time_entries_data['total'] += h
+                time_entries_data[c_id]['total'] += h
 
-                time_entries_data['resource_ids'].add(e.get('ResourceId'))
-                #time_entries_data['customer_ids'].add(e.get('CustomerId'))
-                time_entries_data['job_ids'].add(e.get('JobId'))
+                time_entries_data[c_id]['resource_ids'].add(e.get('ResourceId'))
+                #time_entries_data[c_id]['customer_ids'].add(e.get('CustomerId'))
+                time_entries_data[c_id]['job_ids'].add(e.get('JobId'))
 
-            #print("Total hours:", time_entries_data['total'])
-            g = GaugeMetricFamily(
-              'workbook_time_entry_hours_total',
-              'Number of hours in total',
-              labels=['days'])
-            g.add_metric([str(time_entry_days)], time_entries_data['total'])
-            yield g
+            # Labels to use for the following metrics
+            label_names = ['days','company_id']
 
-            #print("Billable hours:", time_entries_data['billable'])
-            g = GaugeMetricFamily(
-              'workbook_time_entry_hours_billable',
-              'Number of billable hours',
-              labels=['days'])
-            g.add_metric([str(time_entry_days)], time_entries_data['billable'])
-            yield g
+            for c_id in time_entries_data.keys():
+                # Values for the labels
+                label_values = [str(time_entry_days), str(c_id)]
 
-            #print("Resources:", len(time_entries_data['resource_ids']))
-            g = GaugeMetricFamily(
-              'workbook_time_entry_people_total',
-              'Number of people having entered time entries',
-              labels=['days'])
-            g.add_metric([str(time_entry_days)], len(time_entries_data['resource_ids']))
-            yield g
+                g = GaugeMetricFamily(
+                  'workbook_time_entry_hours_total',
+                  'Number of hours in total', labels=label_names)
+                g.add_metric(label_values, time_entries_data[c_id]['total'])
+                yield g
 
-            #print("Jobs:", len(time_entries_data['job_ids']))
-            g = GaugeMetricFamily(
-              'workbook_time_entry_jobs_total',
-              'Number of jobs with time entries',
-              labels=['days'])
-            g.add_metric([str(time_entry_days)], len(time_entries_data['job_ids']))
-            yield g
+                g = GaugeMetricFamily(
+                  'workbook_time_entry_hours_billable',
+                  'Number of billable hours', labels=label_names)
+                g.add_metric(label_values, time_entries_data[c_id]['billable'])
+                yield g
+
+                g = GaugeMetricFamily(
+                  'workbook_time_entry_people_total',
+                  'Number of people having entered time entries', labels=label_names)
+                g.add_metric(label_values, len(time_entries_data[c_id]['resource_ids']))
+                yield g
+
+                g = GaugeMetricFamily(
+                  'workbook_time_entry_jobs_total',
+                  'Number of jobs with time entries', labels=label_names)
+                g.add_metric(label_values, len(time_entries_data[c_id]['job_ids']))
+                yield g
 
             # This is analysis. Don't report
             #print("Billable hours % :", time_entries_data['billable']/time_entries_data['total'])
