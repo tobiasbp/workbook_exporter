@@ -109,6 +109,9 @@ class WorkbookCollector(object):
         # A dictionary mapping IDs to departments
         departments = {d['Id']:d for d in self.wb.get_departments()}
 
+        # FIXME: Add jobs dictionary
+        # FIXME: Add customers dictionary
+
         # Assume no problems with getting data from Workbook
         wb_error = False
         
@@ -155,6 +158,8 @@ class WorkbookCollector(object):
             print("Could not get WB time entries with error: {}".format(e))
             wb_error = True
         else:
+            # FIXME: Label department
+            # FIXME: Number of clients worked on
             for e in time_entries:
                 h = e.get('Hours', 0)
 
