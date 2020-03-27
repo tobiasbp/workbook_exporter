@@ -96,24 +96,42 @@ class WorkbookCollector(object):
           self.wb = workbook_api.WorkbookAPI(wb_url, wb_user, wb_pass)
 
     def collect(self):
-    
-        # A dictionary mapping id to ISO name
-        currencies = {c['Id']:c['Iso4127'] for c in self.wb.get_currencies()}
 
-        # A dictionary mapping id to company name
-        self.companies = {c['Id']:c['Name'] for c in self.wb.get_companies(active=True)}
-
-        # A dictionary mapping IDs to employees
-        employees = {e['Id']:e for e in self.wb.get_employees(Active=True)}
-
-        # A dictionary mapping IDs to departments
-        departments = {d['Id']:d for d in self.wb.get_departments()}
-
-        # A dictionary mapping IDs to jobs
-        jobs = {j['Id']:j for j in self.wb.get_jobs(Status=ACTIVE_JOBS)}
+        # Metric for status on getting data from WB
+        workbook_up = GaugeMetricFamily(
+            'workbook_up', 'Is data beeing pulled from Workbook')
 
         # Assume no problems with getting data from Workbook
         wb_error = False
+
+        try:
+            # A dictionary mapping id to ISO name
+            currencies = {c['Id']:c['Iso4127'] for c in self.wb.get_currencies()}
+
+            # A dictionary mapping id to company name
+            companies = {c['Id']:c['Name'] for c in self.wb.get_companies(active=True)}
+
+            # A dictionary mapping IDs to employees
+            employees = {e['Id']:e for e in self.wb.get_employees(Active=True)}
+
+            # A dictionary mapping IDs to departments
+            departments = {d['Id']:d for d in self.wb.get_departments()}
+
+            # A dictionary mapping IDs to jobs
+            jobs = {j['Id']:j for j in self.wb.get_jobs(Status=ACTIVE_JOBS)}
+
+            # A dictionary mapping IDs to creditors
+            creditors = {c['Id']:c for c in self.wb.get_creditors()}
+
+            # Employee prices
+            prices = self.wb.get_employee_prices_hour(ActiveEmployees=True)
+
+        except Exception as e:
+            print("Error when getting data from Workbook: {}".format(e))
+            # Report no data from Workbook
+            workbook_up.add_metric([], 0)
+            yield workbook_up
+            return
 
 
         # Buckets for histograms
@@ -142,7 +160,7 @@ class WorkbookCollector(object):
         end_date = datetime.today().isoformat()
 
         # Top key is company_id:department_id
-        time_entries_data = {c_id:{} for c_id in self.companies.keys()}
+        time_entries_data = {c_id:{} for c_id in companies.keys()}
 
         for c_id, c_data in time_entries_data.items():
             for d_id, d_data in departments.items():
@@ -225,7 +243,8 @@ class WorkbookCollector(object):
         # EMPLOYEE PRICES #
         try:
             # Get prices for active employees
-            prices = self.wb.get_employee_prices_hour(ActiveEmployees=True)
+            #prices = self.wb.get_employee_prices_hour(ActiveEmployees=True)
+            pass
         except Exception as e:
             print("Could not get WB employees prices with error: {}".format(e))
             wb_error = True
@@ -234,7 +253,7 @@ class WorkbookCollector(object):
             # An employee can have more than 1 entry.
             # Only store the newest. They have ValidFrom date.
             # We don't know the company IDs  
-            price_dict = {c_id:{} for c_id in self.companies.keys()}
+            price_dict = {c_id:{} for c_id in companies.keys()}
             #print(price_dict)
             for p in prices:
                 # FIXME: We should abort if this ID is not in our
@@ -306,7 +325,7 @@ class WorkbookCollector(object):
                 [str(c_id), 'DKK'])
 
         # EMPLOYEES DAYS EMPLOYED #
-        for company_id in self.companies.keys():
+        for company_id in companies.keys():
             try:
                 # Get active employees
                 employees = self.wb.get_employees(Active=True,CompanyId=company_id)
@@ -330,7 +349,7 @@ class WorkbookCollector(object):
 
 
         # JOBS #
-        for company_id in self.companies.keys():
+        for company_id in companies.keys():
             try:
                 # Get active jobs
                 jobs = self.wb.get_jobs(Status=ACTIVE_JOBS, CompanyId=company_id)
@@ -388,38 +407,43 @@ class WorkbookCollector(object):
                     len(active_clients['billable']))
                 yield cust_billable
 
-                cust_non_billable = GaugeMetricFamily(
-                    'workbook_active_customers_non_billable_jobs',
-                    'No of unique customers for non billable active jobs',
+                cust_total = GaugeMetricFamily(
+                    'workbook_active_customers_total_jobs',
+                    'No of unique customers for all active jobs',
                     labels=["company_id"])
-                cust_non_billable.add_metric([str(company_id)], len(active_clients['non_billable']))
-                yield cust_non_billable
+                cust_total.add_metric(
+                  [str(company_id)],
+                  len(active_clients['non_billable'].union(active_clients['billable']))
+                  )
+                yield cust_total
 
         # CREDIT #
         try:
             # Get all creditors accross companies
-            creditors = self.wb.get_creditors()
+            #creditors = self.wb.get_creditors()
+            pass
         except Exception as e:
             print("Error: {}".format(e))
             wb_error = True
         else:
-            for company_id in self.companies.keys():
+            for company_id in companies.keys():
                 # Store credit observations here
                 observations = {
                     'total': [],
                     'due': [],
                     }
                 # Run through creditors for current company
-                for c in [c for c in creditors if c['CompanyId'] == company_id]:
-                    # FIXME: Use conversion function here
-                    total = c.get('RemainingAmountTotal', None)
-                    due = c.get('RemainingAmountDue', None)
-                    # FIXME: Convert currency
-                    if due:
-                        observations['due'].append(due)
-                    if total:
-                        observations['total'].append(total)
-
+                for c in creditors.values():
+                    if c['CompanyId'] == company_id:
+                        # FIXME: Use conversion function here
+                        total = c.get('RemainingAmountTotal', None)
+                        due = c.get('RemainingAmountDue', None)
+                        # FIXME: Convert currency
+                        if due:
+                            observations['due'].append(due)
+                        if total:
+                            observations['total'].append(total)
+    
                 # Credit total
                 yield build_histogram(
                    observations['total'],
@@ -439,7 +463,7 @@ class WorkbookCollector(object):
                    [str(company_id), 'DKK'])
 
         # DEBIT #
-        for company_id in self.companies.keys():
+        for company_id in companies.keys():
             try:
                 debtors = self.wb.get_debtors_balance(company_id=company_id)
             except Exception as e:
@@ -479,7 +503,7 @@ class WorkbookCollector(object):
                    ['company_id', 'currency'],
                    [str(company_id), 'DKK'])
 
-
+        '''
         return
 
         # A dictionary with customer_id as keys
@@ -541,19 +565,18 @@ class WorkbookCollector(object):
             #yield customers
         
         #print(wb_customers)
+        '''
         
         # PROBLEMS WITH WORKBOOK? #
-    
+
         metric = GaugeMetricFamily(
             'workbook_up',
             'Is data beeing pulled from Workbook'
             )
-    
         if wb_error:
             metric.add_metric([], 0)
         else:
             metric.add_metric([], 1)
-    
         yield metric
 
 
