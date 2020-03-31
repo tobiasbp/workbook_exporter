@@ -15,7 +15,7 @@ import workbook_api
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 # Jobs with status id in this list, are reported
-ACTIVE_JOBS = [0,1]
+ACTIVE_JOBS = [0,1,2,3]
 
 # Create a metric to track time spent and requests made.
 REQUEST_TIME = Summary('request_processing_seconds', 'Time spent processing request')
@@ -30,6 +30,10 @@ EMPLOYEE_HOURS_CAPACITY_FIELDS = [
     "HoursNormalSaturday",
     "HoursNormalSunday"
     ]
+
+# The currency to use for reporting
+REPORTING_CURRENCY_ID = 1
+
 # Decorate function with metric.
 @REQUEST_TIME.time()
 def process_request(t):
@@ -101,8 +105,22 @@ def build_histogram(observations, buckets, name, desc, label_names, label_values
 class WorkbookCollector(object):
 
     def __init__(self, wb_url, wb_user, wb_pass):
-          # Workbook API object
-          self.wb = workbook_api.WorkbookAPI(wb_url, wb_user, wb_pass)
+        # Workbook API object
+        self.wb = workbook_api.WorkbookAPI(wb_url, wb_user, wb_pass)
+
+    def convert_to_reporting_currency(self, amount, currency_id, company_id):
+
+        # Don't convert if amount is in reporting currency
+        if currency_id == REPORTING_CURRENCY_ID:
+            return amount
+
+        converted_amount = self.wb.currency_convert(
+            Amount=amount,
+            FromCurrencyId=currency_id,
+            ToCurrencyId=REPORTING_CURRENCY_ID,
+            CompanyId=company_id)
+        #print("Converted:", amount, "to", converted_amount)
+        return converted_amount
 
     def collect(self):
 
@@ -168,7 +186,7 @@ class WorkbookCollector(object):
 
         # Buckets for histograms
         days_employed_buckets = [3*30, 5*30, 2*12*30+9*30, 5*12*30+8*30, 8*12*30+7*30]
-        job_age_buckets = [15, 30, 2*30, 6*30, 365]
+        job_age_buckets = [1, 15, 30, 2*30, 6*30, 365]
         profit_buckets = [0.2, 0.4, 0.6, 0.8]
         hours_sale_buckets = [500, 1000, 1500, 2000]
         hours_cost_buckets = [250, 500, 750, 1000]
@@ -177,9 +195,10 @@ class WorkbookCollector(object):
         credit_buckets = [-50000, -25000, -10000, 0, 10000, 25000, 50000]
         debit_buckets = [-50000, -25000, -10000, 0, 10000, 25000, 50000, 100000]
 
-        reporting_currency_id = 'DKK'
+        # Convert all debit/to this currency
         # 1 = DKK
-        currency_id = 1
+        #reporting_currency_id = 1
+        #currency_id = 1
 
         # Days to look in to the past for timeentries
         time_entry_days = 7
@@ -486,15 +505,31 @@ class WorkbookCollector(object):
                     }
                 # Run through creditors for current company
                 for c in creditors.values():
-                    if c['CompanyId'] == company_id:
-                        # FIXME: Use conversion function here
+                    if c['CompanyId'] == company_id and c.get('CurrencyId') and c.get('RemainingAmountTotal'):
+
                         total = c.get('RemainingAmountTotal', None)
                         due = c.get('RemainingAmountDue', None)
-                        # FIXME: Convert currency
+                        c_id = c.get('CurrencyId')
+                        
                         if due:
-                            observations['due'].append(due)
+                            try:
+                                due = self.convert_to_reporting_currency(
+                                    due, c_id, c['CompanyId'])
+                            except Exception as e:
+                                print("Could not convert amount: {}".format(e))
+                                wb_error = True
+                            else:
+                                observations['due'].append(due)
+
                         if total:
-                            observations['total'].append(total)
+                            try:
+                                total = self.convert_to_reporting_currency(
+                                    total, c_id, c['CompanyId'])
+                            except Exception as e:
+                                print("Could not convert amount: {}".format(e))
+                                wb_error = True
+                            else:
+                                observations['total'].append(total)
     
                 # Credit total
                 yield build_histogram(
@@ -528,15 +563,35 @@ class WorkbookCollector(object):
                     }
                 # Run through creditors for current company
                 for d in debtors:
-                    total = d.get('RemainingAmountTotal', None)
-                    due = d.get('RemainingAmountDue', None)
-                    # FIXME: Convert currency
-                    if due:
-                        observations['due'].append(due)
-                    if total:
-                        observations['total'].append(total)
+                    c_id = d.get('CurrencyId', False)
+                    if c_id:
+                        total = d.get('RemainingAmountTotal', None)
+                        due = d.get('RemainingAmountDue', None)
+      
+                        if due:
+                            try:
+                                due = self.convert_to_reporting_currency(
+                                    due, c_id, d['CompanyId'])
+                            except Exception as e:
+                                print("Could not convert amount: {}".format(e))
+                                wb_error = True
+                            else:
+                                observations['due'].append(due)
+                            #observations['due'].append(due)
+      
+                        if total:
+                            try:
+                                total = self.convert_to_reporting_currency(
+                                    total, c_id, d['CompanyId'])
+                            except Exception as e:
+                                print("Could not convert amount: {}".format(e))
+                                wb_error = True
+                            else:
+                                observations['total'].append(total)
+                            #observations['total'].append(total)
+
                 #print(observations)
-                # FIXME: Currency!
+                # FIXME: DONT REPORT IF ERRORS IN DATA!
                 # Debit total
                 yield build_histogram(
                    observations['total'],
@@ -546,7 +601,7 @@ class WorkbookCollector(object):
                    ['company_id', 'currency'],
                    [str(company_id), 'DKK'])
 
-                # Credit due
+                # Debit due
                 yield build_histogram(
                    observations['due'],
                    debit_buckets,
