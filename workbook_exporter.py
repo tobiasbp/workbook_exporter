@@ -555,80 +555,13 @@ class WorkbookCollector(object):
                    ['company_id', 'currency'],
                    [str(company_id), 'DKK'])
 
-        '''
-        return
-
-        # A dictionary with customer_id as keys
-        wb_customers = {}
-        
-        # Get the Workbook departments
-        departments = {}
-        try:
-            result = self.wb.get_departments()
-        except Exception as e:
-            print("Error getting departments from WB: {}".format(e))
-            wb_error = True
-        else:
-            # Dict of departments with company ID is key
-            departments = {d['CompanyId']:{} for d in result}
-            for d in result:
-                departments[d['CompanyId']][d['Id']] = d['Name']
-            print(departments)
-
-    
-        # CUSTOMERS #
-    
-        customers = GaugeMetricFamily(
-            'workbook_customer_active_jobs',
-            'No of active jobs for Workbook customer',
-            labels=[
-                "customer_id",
-                "type_id",
-                "responsible_employee_id",
-                "payment_term_id",
-                "name",
-                ]
-            )
-    
-        try:
-            result = self.wb.get_costumers(Active=True)
-        except Exception as e:
-            print("Could not get customers with error: {}".format(e))
-        else:
-            for c in result:
-    
-                try:
-                    n = wb_customers[c['Id']]['no_of_jobs']
-                except KeyError:
-                    n = 0
-                
-                customers.add_metric(
-                    [
-                        str(c.get('Id', '')),
-                        str(c.get('TypeId', '')),
-                        str(c.get('ResponsibleEmployeeId', '')),
-                        str(c.get('PaymentTermId', '')),
-                        str(c.get('Name', '')),
-                    ],
-                    n
-                )
-    
-    
-            #yield customers
-        
-        #print(wb_customers)
-        '''
         
         # PROBLEMS WITH WORKBOOK? #
 
-        metric = GaugeMetricFamily(
-            'workbook_up',
-            'Is data beeing pulled from Workbook'
-            )
         if wb_error:
-            metric.add_metric([], 0)
+            workbook_up.add_metric([], 0)
         else:
-            metric.add_metric([], 1)
+            workbook_up.add_metric([], 1)
         yield metric
 
 
