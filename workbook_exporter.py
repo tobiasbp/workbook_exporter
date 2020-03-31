@@ -562,7 +562,7 @@ class WorkbookCollector(object):
             workbook_up.add_metric([], 0)
         else:
             workbook_up.add_metric([], 1)
-        yield metric
+        yield workbook_up
 
 
 def parse_args():
