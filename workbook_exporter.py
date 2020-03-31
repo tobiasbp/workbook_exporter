@@ -20,7 +20,16 @@ ACTIVE_JOBS = [0,1]
 # Create a metric to track time spent and requests made.
 REQUEST_TIME = Summary('request_processing_seconds', 'Time spent processing request')
 
-
+# Fields to use for summing hours/week
+EMPLOYEE_HOURS_CAPACITY_FIELDS = [
+    "HoursNormalMonday",
+    "HoursNormalTuesday",
+    "HoursNormalWednesday",
+    "HoursNormalThursday",
+    "HoursNormalFriday",
+    "HoursNormalSaturday",
+    "HoursNormalSunday"
+    ]
 # Decorate function with metric.
 @REQUEST_TIME.time()
 def process_request(t):
@@ -112,8 +121,31 @@ class WorkbookCollector(object):
             companies = {c['Id']:c['Name'] for c in self.wb.get_companies(active=True)}
 
             # A dictionary mapping IDs to employees
-            employees = {e['Id']:e for e in self.wb.get_employees(Active=True)}
+            employees = \
+              {e['Id']:e for e in self.wb.get_employees(Active=True)}
 
+            # Capacity profiles (Hours pr/day for employees
+            capacity_profiles = {}
+            for e in employees.values():
+              #print(e['EmployeeName'], e['TimeRegistration'])
+              # Get profile for employee
+              assert not e['Id'] in capacity_profiles.keys()
+
+              # Save latest (FIXME) profile for employee
+              # FIXME: Choice must be based on field ValidFrom
+              p = self.wb.get_capacity_profiles(e['Id'])[-1]
+
+              # Add calculated sum of work hours pr. week to profile
+              p['hours_week'] = 0
+              for key in p.keys():
+                if key in EMPLOYEE_HOURS_CAPACITY_FIELDS:
+                  p['hours_week'] += p[key]
+
+              # Add the profile to the profiles dict 
+              capacity_profiles[e['Id']] = p
+
+
+            #print(capacity_profiles)
             # A dictionary mapping IDs to departments
             departments = {d['Id']:d for d in self.wb.get_departments()}
 
@@ -136,7 +168,7 @@ class WorkbookCollector(object):
 
         # Buckets for histograms
         days_employed_buckets = [3*30, 5*30, 2*12*30+9*30, 5*12*30+8*30, 8*12*30+7*30]
-        job_age_buckets = [30, 2*30, 6*30, 365]
+        job_age_buckets = [15, 30, 2*30, 6*30, 365]
         profit_buckets = [0.2, 0.4, 0.6, 0.8]
         hours_sale_buckets = [500, 1000, 1500, 2000]
         hours_cost_buckets = [250, 500, 750, 1000]
@@ -211,7 +243,7 @@ class WorkbookCollector(object):
 
                     g = GaugeMetricFamily(
                       'workbook_time_entry_hours_total',
-                      'Number of hours in total', labels=label_names)
+                      'Sum of hours entered by employees', labels=label_names)
                     g.add_metric(label_values, d_data['total'])
                     yield g
 
@@ -221,8 +253,28 @@ class WorkbookCollector(object):
                     g.add_metric(label_values, d_data['billable'])
                     yield g
 
+                    # No of employees with expected to enter time
+                    no_of_employees_to_enter_time = len(
+                      [e['Id'] for e in employees.values() if e['TimeRegistration']]
+                      )
                     g = GaugeMetricFamily(
                       'workbook_time_entry_people_total',
+                      'Number of people who must enter time', labels=label_names)
+                    g.add_metric(label_values, no_of_employees_to_enter_time)
+                    yield g
+
+                    # Combined work hours for all employees
+                    sum_of_work_hours = sum(
+                      [p['hours_week'] for p in capacity_profiles.values()]
+                      )
+                    g = GaugeMetricFamily(
+                      'workbook_time_entry_hours_capacity_total',
+                      'Sum of hours to be entered', labels=label_names)
+                    g.add_metric(label_values, sum_of_work_hours)
+                    yield g
+
+                    g = GaugeMetricFamily(
+                      'workbook_time_entry_people_with_time',
                       'Number of people having entered time entries', labels=label_names)
                     g.add_metric(label_values, len(d_data['resource_ids']))
                     yield g
