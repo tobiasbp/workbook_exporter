@@ -282,6 +282,11 @@ class WorkbookCollector(object):
             # FIXME: Label department
             # FIXME: Number of clients worked on
             for e in time_entries:
+                # Sometimes a resource is no longer an employee
+                if not employees.get(e['ResourceId']):
+                  print("No longer employee: ResourceId", e['ResourceId'])
+                  continue
+
                 c_id = employees[e['ResourceId']]['CompanyId']
                 d_id = employees[e['ResourceId']]['DepartmentId']
                 j_id = e['JobId']
@@ -688,7 +693,7 @@ def parse_args():
         '--port',
         type=int,
         required=False,
-        help='Port to recieve request on',
+        help='Port to recieve request on. Defaults to 9701.',
         default=9701
     )
 
