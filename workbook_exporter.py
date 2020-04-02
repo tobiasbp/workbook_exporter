@@ -683,6 +683,15 @@ def parse_args():
         default=os.environ.get('WORKBOOK_PASSWORD', 'workbook-password')
     )
 
+    # Poprt to listen on
+    parser.add_argument(
+        '--port',
+        type=int,
+        required=False,
+        help='Port to recieve request on',
+        default=9701
+    )
+
     return parser.parse_args()
 
 
@@ -701,7 +710,7 @@ def main():
             )
 
         # Start up the server to expose the metrics.
-        start_http_server(8000)
+        start_http_server(args.port)
         
         # Generate some requests.
         while True:
