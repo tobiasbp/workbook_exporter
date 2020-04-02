@@ -284,7 +284,7 @@ class WorkbookCollector(object):
             for e in time_entries:
                 # Sometimes a resource is no longer an employee
                 if not employees.get(e['ResourceId']):
-                  print("No longer employee: ResourceId", e['ResourceId'])
+                  #print("No longer employee: ResourceId", e['ResourceId'])
                   continue
 
                 c_id = employees[e['ResourceId']]['CompanyId']
