@@ -17,6 +17,11 @@ TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 # Jobs with status id in this list, are reported
 ACTIVE_JOBS = [0,1,2,3]
 
+# The type IDs of accounts to report balance for
+FINANCE_ACCOUNT_TYPES = [3]
+# The field with the reported balance metric
+FINANCE_ACCOUNT_BALANCE_FIELD = 'AmountBeginning'
+
 # Create a metric to track time spent and requests made.
 REQUEST_TIME = Summary('request_processing_seconds', 'Time spent processing request')
 
@@ -119,7 +124,8 @@ class WorkbookCollector(object):
             FromCurrencyId=currency_id,
             ToCurrencyId=REPORTING_CURRENCY_ID,
             CompanyId=company_id)
-        #print("Converted:", amount, "to", converted_amount)
+        #print("Converted:", amount, self.currencies[currency_id], "to",
+        #  converted_amount, self.currencies[REPORTING_CURRENCY_ID])
         return converted_amount
 
     def collect(self):
@@ -131,18 +137,28 @@ class WorkbookCollector(object):
         # Assume no problems with getting data from Workbook
         wb_error = False
 
+        # Get all the data from WB
         try:
             # A dictionary mapping id to ISO name
-            currencies = {c['Id']:c['Iso4127'] for c in self.wb.get_currencies()}
+            self.currencies = {c['Id']:c['Iso4127'] for c in self.wb.get_currencies()}
 
             # A dictionary mapping id to company name
-            companies = {c['Id']:c['Name'] for c in self.wb.get_companies(active=True)}
+            #companies = {c['Id']:c['Name'] for c in self.wb.get_companies(active=True)}
+            companies = {c['Id']:c for c in self.wb.get_companies(active=True)}
+
+            # Add currency_id to companies
+            for c_id, c_data in companies.items():
+              # Get full company info from WB
+              c_info = self.wb.get_company(CompanyId=c_id)
+              # Add currency to company dict
+              c_data['CurrencyId'] = c_info['CurrencyID']
 
             # A dictionary mapping IDs to employees
             employees = \
               {e['Id']:e for e in self.wb.get_employees(Active=True)}
 
-            # Capacity profiles (Hours pr/day for employees
+            # Capacity profiles (Hours pr/day for employees)
+            # EMployee ID is key
             capacity_profiles = {}
             for e in employees.values():
               #print(e['EmployeeName'], e['TimeRegistration'])
@@ -162,8 +178,6 @@ class WorkbookCollector(object):
               # Add the profile to the profiles dict 
               capacity_profiles[e['Id']] = p
 
-
-            #print(capacity_profiles)
             # A dictionary mapping IDs to departments
             departments = {d['Id']:d for d in self.wb.get_departments()}
 
@@ -176,6 +190,29 @@ class WorkbookCollector(object):
             # Employee prices
             prices = self.wb.get_employee_prices_hour(ActiveEmployees=True)
 
+            # A list of accounts
+            accounts = self.wb.get_finance_accounts(
+              TypeIds=FINANCE_ACCOUNT_TYPES)
+
+            # Add balance to accounts
+            for a in accounts:
+              balance_list = self.wb.get_finance_account_balance(
+                CompanyId=a['CompanyId'],
+                AccountId=a['Id'],
+                )
+              # Makes sure we have data. Some typeIds do not.
+              if len(balance_list) > 0:
+                  # We want the latest balance entry.
+                  # Assume latest entry has highest ID
+                  # A dict with Ids as key
+                  b = {b['Id']:b for b in balance_list}
+                  # Get highest Id
+                  max_id = max(b.keys())
+
+                  # Add field Balance to account
+                  a['balance'] = b[max_id].get(
+                    FINANCE_ACCOUNT_BALANCE_FIELD, 0)
+
         except Exception as e:
             print("Error when getting data from Workbook: {}".format(e))
             # Report no data from Workbook
@@ -183,6 +220,21 @@ class WorkbookCollector(object):
             yield workbook_up
             return
 
+        # FINANCE ACCOUNTS
+
+        for a in accounts:
+          # Get the currency to use
+          currency_id = companies[a['CompanyId']]['CurrencyId']
+          g = GaugeMetricFamily(
+            'workbook_finance_account_balance',
+            'Balance of finance account',
+            labels=['company_id', 'currency', 'account_id', 'account_description', 'account_number']
+            )
+          g.add_metric(
+            [str(a['CompanyId']), str(self.currencies[currency_id]), str(a['Id']), str(a['AccountDescription']), str(a['AccountNumber'])],
+            a['balance']
+            )
+          yield g
 
         # Buckets for histograms
         days_employed_buckets = [3*30, 5*30, 2*12*30+9*30, 5*12*30+8*30, 8*12*30+7*30]
@@ -194,11 +246,6 @@ class WorkbookCollector(object):
         # FIXME: Credit/Debit buckets should probably be currency dependant
         credit_buckets = [-50000, -25000, -10000, 0, 10000, 25000, 50000]
         debit_buckets = [-50000, -25000, -10000, 0, 10000, 25000, 50000, 100000]
-
-        # Convert all debit/to this currency
-        # 1 = DKK
-        #reporting_currency_id = 1
-        #currency_id = 1
 
         # Days to look in to the past for timeentries
         time_entry_days = 7
@@ -224,6 +271,7 @@ class WorkbookCollector(object):
                         'customer_ids': set()
                         }
 
+        # TIME ENTRIES #
         try:
           time_entries = self.wb.get_time_entries(
             Start=start_date, End=end_date,HasTimeRegistration=True)
@@ -350,6 +398,9 @@ class WorkbookCollector(object):
 
             # Loop through company price dicts
             for c_id, prices in price_dict.items():
+              currency_id = companies[c_id]['CurrencyId']
+              currency = self.currencies[currency_id]
+
               # FIXME: Make sure the company is in our list
               # It could possible be changed from config
               # Store observations for company here
@@ -366,7 +417,6 @@ class WorkbookCollector(object):
                     observations[field].append(p.get(field))
 
               # PROFIT #
-              # FIXME: CURRENCY!
               yield build_histogram(
                 observations['Profit'],
                 profit_buckets,
@@ -376,24 +426,22 @@ class WorkbookCollector(object):
                 [str(c_id)])
 
               # HOURS SALE #
-              # FIXME: CURRENCY!
               yield build_histogram(
                 observations['HoursSale'],
                 hours_sale_buckets,
                 'workbook_employees_hours_sale',
                 'Estimated sales price of 1 hours work',
                 ['company_id', 'currency'],
-                [str(c_id), 'DKK'])
+                [str(c_id), currency])
 
               # HOURS COST #
-              # FIXME: CURRENCY!
               yield build_histogram(
                 observations['HoursCost'],
                 hours_cost_buckets,
                 'workbook_employees_hours_cost',
                 'Estimated cost of 1 hours work',
                 ['company_id', 'currency'],
-                [str(c_id), 'DKK'])
+                [str(c_id), currency])
 
         # EMPLOYEES DAYS EMPLOYED #
         for company_id in companies.keys():
@@ -498,6 +546,10 @@ class WorkbookCollector(object):
             wb_error = True
         else:
             for company_id in companies.keys():
+                # Get currency
+                currency_id = companies[company_id]['CurrencyId']
+                currency = self.currencies[currency_id]
+
                 # Store credit observations here
                 observations = {
                     'total': [],
@@ -510,47 +562,39 @@ class WorkbookCollector(object):
                         total = c.get('RemainingAmountTotal', None)
                         due = c.get('RemainingAmountDue', None)
                         c_id = c.get('CurrencyId')
-                        
+
                         if due:
-                            try:
-                                due = self.convert_to_reporting_currency(
-                                    due, c_id, c['CompanyId'])
-                            except Exception as e:
-                                print("Could not convert amount: {}".format(e))
-                                wb_error = True
-                            else:
-                                observations['due'].append(due)
+                            observations['due'].append(due)
 
                         if total:
-                            try:
-                                total = self.convert_to_reporting_currency(
-                                    total, c_id, c['CompanyId'])
-                            except Exception as e:
-                                print("Could not convert amount: {}".format(e))
-                                wb_error = True
-                            else:
-                                observations['total'].append(total)
-    
-                # Credit total
-                yield build_histogram(
-                   observations['total'],
-                   credit_buckets,
-                   'workbook_credit_total',
-                   'Amount owed',
-                   ['company_id', 'currency'],
-                   [str(company_id), 'DKK'])
+                            observations['total'].append(total)
 
-                # Credit due
-                yield build_histogram(
-                   observations['due'],
-                   credit_buckets,
-                   'workbook_credit_due',
-                   'Amount owed',
-                   ['company_id', 'currency'],
-                   [str(company_id), 'DKK'])
+
+                # Report metrics if no errors in WB
+                if not wb_error:
+                    # Credit total
+                    yield build_histogram(
+                       observations['total'],
+                       credit_buckets,
+                       'workbook_credit_total',
+                       'Amount owed',
+                       ['company_id', 'currency'],
+                       [str(company_id), currency])
+
+                    # Credit due
+                    yield build_histogram(
+                       observations['due'],
+                       credit_buckets,
+                       'workbook_credit_due',
+                       'Amount owed',
+                       ['company_id', 'currency'],
+                       [str(company_id), currency])
 
         # DEBIT #
         for company_id in companies.keys():
+            # Get currency
+            currency_id = companies[company_id]['CurrencyId']
+            currency = self.currencies[currency_id]
             try:
                 debtors = self.wb.get_debtors_balance(company_id=company_id)
             except Exception as e:
@@ -567,48 +611,32 @@ class WorkbookCollector(object):
                     if c_id:
                         total = d.get('RemainingAmountTotal', None)
                         due = d.get('RemainingAmountDue', None)
-      
+
                         if due:
-                            try:
-                                due = self.convert_to_reporting_currency(
-                                    due, c_id, d['CompanyId'])
-                            except Exception as e:
-                                print("Could not convert amount: {}".format(e))
-                                wb_error = True
-                            else:
-                                observations['due'].append(due)
-                            #observations['due'].append(due)
-      
+                            observations['due'].append(due)
+
                         if total:
-                            try:
-                                total = self.convert_to_reporting_currency(
-                                    total, c_id, d['CompanyId'])
-                            except Exception as e:
-                                print("Could not convert amount: {}".format(e))
-                                wb_error = True
-                            else:
-                                observations['total'].append(total)
-                            #observations['total'].append(total)
+                            observations['total'].append(total)
 
-                #print(observations)
-                # FIXME: DONT REPORT IF ERRORS IN DATA!
-                # Debit total
-                yield build_histogram(
-                   observations['total'],
-                   debit_buckets,
-                   'workbook_debit_total',
-                   'Debit total',
-                   ['company_id', 'currency'],
-                   [str(company_id), 'DKK'])
-
-                # Debit due
-                yield build_histogram(
-                   observations['due'],
-                   debit_buckets,
-                   'workbook_debit_due',
-                   'Debit due',
-                   ['company_id', 'currency'],
-                   [str(company_id), 'DKK'])
+                # Report metrics if no errors from WB
+                if not wb_error:
+                  # Debit total
+                  yield build_histogram(
+                     observations['total'],
+                     debit_buckets,
+                     'workbook_debit_total',
+                     'Debit total',
+                     ['company_id', 'currency'],
+                     [str(company_id), currency])
+  
+                  # Debit due
+                  yield build_histogram(
+                     observations['due'],
+                     debit_buckets,
+                     'workbook_debit_due',
+                     'Debit due',
+                     ['company_id', currency],
+                     [str(company_id), currency])
 
         
         # PROBLEMS WITH WORKBOOK? #
