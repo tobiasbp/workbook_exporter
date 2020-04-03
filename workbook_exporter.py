@@ -314,8 +314,11 @@ class WorkbookCollector(object):
                         str(d_id)]
 
                     # A list of IDs of all employees in this department
-                    #dep_employee_ids = [e['Id'] for e in employees.values() if e['DepartmentId'] == d_id ]
-                    #print(d_id,":",dep_emplyee_ids)
+                    d_employees = [
+                      e['Id'] for e in employees.values() if \
+                      e['TimeRegistration'] and e['DepartmentId'] == d_id
+                      ]
+
                     g = GaugeMetricFamily(
                       'workbook_time_entry_hours_total',
                       'Sum of hours entered by employees', labels=label_names)
@@ -328,22 +331,16 @@ class WorkbookCollector(object):
                     g.add_metric(label_values, d_data['billable'])
                     yield g
 
-                    # No of employees in this dept expected to enter time
-                    # FIXME: Only this department
-                    no_of_employees_to_enter_time = len(
-                      [e['Id'] for e in employees.values() if e['TimeRegistration'] and e['DepartmentId'] == d_id]
-                      )
                     g = GaugeMetricFamily(
                       'workbook_time_entry_people_total',
                       'Number of people who must enter time', labels=label_names)
-                    g.add_metric(label_values, no_of_employees_to_enter_time)
+                    g.add_metric(label_values, len(d_employees))
                     yield g
 
-                    # Combined work hours for all employees
-                    # FIXME: Only this department
-                    sum_of_work_hours = sum(
-                      [p['hours_week'] for p in capacity_profiles.values()]
-                      )
+                    # Sum of work hours for all employees in department
+                    sum_of_work_hours = sum([
+                      p['hours_week'] for p in capacity_profiles.values() if \
+                       p['ResourceId'] in d_employees])
                     g = GaugeMetricFamily(
                       'workbook_time_entry_hours_capacity_total',
                       'Sum of hours to be entered', labels=label_names)
