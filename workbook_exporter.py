@@ -238,7 +238,7 @@ class WorkbookCollector(object):
 
         # Buckets for histograms
         days_employed_buckets = [3*30, 5*30, 2*12*30+9*30, 5*12*30+8*30, 8*12*30+7*30]
-        job_age_buckets = [1, 15, 30, 2*30, 6*30, 365]
+        job_age_buckets = [15, 30, 2*30, 6*30, 365]
         profit_buckets = [0.2, 0.4, 0.6, 0.8]
         hours_sale_buckets = [500, 1000, 1500, 2000]
         hours_cost_buckets = [250, 500, 750, 1000]
