@@ -10,16 +10,12 @@ import time
 from prometheus_client import start_http_server, Summary
 from prometheus_client.core import GaugeMetricFamily, HistogramMetricFamily, REGISTRY
 import workbook_api
+import yaml
 
 # The string to use when converting times in Workbook
 # Example: 2020-08-17T09:02:23.677Z
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
-# Jobs with status id in this list, are reported
-ACTIVE_JOBS = [0,1,2,3]
-
-# The type IDs of accounts to report balance for
-FINANCE_ACCOUNT_TYPES = [3]
 # The field with the reported balance metric
 FINANCE_ACCOUNT_BALANCE_FIELD = 'AmountBeginning'
 
@@ -36,9 +32,6 @@ EMPLOYEE_HOURS_CAPACITY_FIELDS = [
     "HoursNormalSaturday",
     "HoursNormalSunday"
     ]
-
-# The currency to use for reporting
-#REPORTING_CURRENCY_ID = 1
 
 # Decorate function with metric.
 @REQUEST_TIME.time()
@@ -146,6 +139,7 @@ class WorkbookCollector(object):
 
         # How many requests were made to workbook?
         no_of_wb_requests = 0
+
         # Get all the data from WB
         try:
 
@@ -157,6 +151,19 @@ class WorkbookCollector(object):
             companies = {c['Id']:c for c in self.wb.get_companies(active=True)}
             no_of_wb_requests += 1
 
+            # Delete any companies not in list in config file
+            if COMPANIES_TO_GET:
+              companies_to_delete = []
+              # Register company IDs to delete
+              for c_id in companies.keys():
+                if c_id not in COMPANIES_TO_GET:
+                  companies_to_delete.append(c_id)
+
+              # Delete the company IDs from the companies dict
+              for c_id in companies_to_delete:
+                companies.pop(c_id, None)
+
+
             # Add currency_id to companies
             for c_id, c_data in companies.items():
               # Get full company info from WB
@@ -167,7 +174,10 @@ class WorkbookCollector(object):
 
             # A dictionary mapping IDs to employees
             employees = \
-              {e['Id']:e for e in self.wb.get_employees(Active=True)}
+              {e['Id']:e for e in self.wb.get_employees(
+                Active=True,
+                CompanyId=companies.keys())
+                }
             no_of_wb_requests += 1
 
             # Capacity profiles (Hours pr/day for employees)
@@ -196,7 +206,10 @@ class WorkbookCollector(object):
             no_of_wb_requests += 1
 
             # A dictionary mapping IDs to jobs
-            jobs = {j['Id']:j for j in self.wb.get_jobs(Status=ACTIVE_JOBS)}
+            jobs = {j['Id']:j for j in self.wb.get_jobs(
+              Status=ACTIVE_JOBS,
+              CompanyId=companies.keys())
+              }
             no_of_wb_requests += 1
 
             # A dictionary mapping IDs to creditors
@@ -207,9 +220,11 @@ class WorkbookCollector(object):
             prices = self.wb.get_employee_prices_hour(ActiveEmployees=True)
             no_of_wb_requests += 1
 
-            # A list of accounts
+            # Get a list of accounts
             accounts = self.wb.get_finance_accounts(
-              TypeIds=FINANCE_ACCOUNT_TYPES)
+              TypeIds=FINANCE_ACCOUNT_TYPES,
+              Companies=companies.keys())
+            no_of_wb_requests += 1
 
             # Add balance to accounts
             for a in accounts:
@@ -244,27 +259,31 @@ class WorkbookCollector(object):
         # FINANCE ACCOUNTS
 
         for a in accounts:
-          # Get the currency to use
-          currency_id = companies[a['CompanyId']]['CurrencyId']
-          g = GaugeMetricFamily(
-            'workbook_finance_account_balance',
-            'Balance of finance account',
-            labels=[
-              'company_id',
-              'currency',
-              'account_id',
-              'account_description',
-              'account_number'
-              ]
-            )
-          g.add_metric(
-              [str(a['CompanyId']),
-              str(self.currencies[currency_id]), 
-              str(a['Id']), str(a['AccountDescription']),
-              str(a['AccountNumber'])],
-              a['balance']
-            )
-          yield g
+          # Some account types (2?) has no balance
+          # It's only used cosmetically in Workbook
+          if a.get('balance'):
+
+            # Get the currency to use
+            currency_id = companies[a['CompanyId']]['CurrencyId']
+            g = GaugeMetricFamily(
+              'workbook_finance_account_balance',
+              'Balance of finance account',
+              labels=[
+                'company_id',
+                'currency',
+                'account_id',
+                'account_description',
+                'account_number'
+                ]
+              )
+            g.add_metric(
+                [str(a['CompanyId']),
+                str(self.currencies[currency_id]),
+                str(a['Id']), str(a['AccountDescription']),
+                str(a['AccountNumber'])],
+                a['balance']
+              )
+            yield g
 
         # Buckets for histograms
         days_employed_buckets = [3*30, 5*30, 2*12*30+9*30, 5*12*30+8*30, 8*12*30+7*30]
@@ -416,8 +435,14 @@ class WorkbookCollector(object):
             for p in prices:
                 # FIXME: We should abort if this ID is not in our
                 # company list
-                c_id = employees[p['EmployeeId']]['CompanyId']
-
+                try:
+                  c_id = employees[p['EmployeeId']]['CompanyId']
+                except KeyError:
+                  # Abort because employee from price is not
+                  # employeed in one of the companies we are
+                  # reporting data for (Can not filter on companies for prices)
+                  continue
+                  
                 # If we allready have data on the current employee
                 # We may need to update the price
                 if price_dict[c_id].get(p['EmployeeId']):
@@ -708,8 +733,8 @@ class WorkbookCollector(object):
         if wb_error:
           logging.error("Error exporting data from workbook")
         else:
-          logging.info("Scrape finished in {} seconds"
-            .format(scrape_time_seconds))
+          logging.info("Scrape finished in {} seconds with {} requests to Workbook API"
+            .format(scrape_time_seconds, no_of_wb_requests))
 
 
 def parse_args():
@@ -721,6 +746,7 @@ def parse_args():
     default_port = 9701
     default_log = '/var/log/workbook_exporter.log'
     default_level = 'INFO'
+    default_config = '/etc/workbook_exporter.yml'
 
     # Parser object
     parser = argparse.ArgumentParser(
@@ -733,7 +759,7 @@ def parse_args():
         #metavar='wb_url',
         required=False,
         help='Server url for the Workbook API',
-        default=os.environ.get('WORKBOOK_URL', 'https://example.workbook.dk')
+        default=os.environ.get('WORKBOOK_URL', None)
     )
 
     # The Workbook user
@@ -741,15 +767,15 @@ def parse_args():
         '--workbook-user',
         required=False,
         help='User name for logging in to Workbook',
-        default=os.environ.get('WORKBOOK_USER', 'workbook-user')
+        default=os.environ.get('WORKBOOK_USER', None)
     )
 
     # The Workbook password
     parser.add_argument(
         '--workbook-password',
         required=False,
-        help='Password to for logging in to Workbook',
-        default=os.environ.get('WORKBOOK_PASSWORD', 'workbook-password')
+        help='Password for logging in to Workbook',
+        default=os.environ.get('WORKBOOK_PASSWORD', None)
     )
 
     # Port to listen on
@@ -780,7 +806,30 @@ def parse_args():
       help="Set log level to one of: DEBUG, INFO, WARNING , ALL."
       )
 
+    # Location of config file
+    parser.add_argument(
+        '--conf-file',
+        metavar=default_config,
+        required=False,
+        help='Location of config file in YAML format.',
+        default=default_config
+    )
+
     return parser.parse_args()
+
+def parse_config(config_file):
+  '''Parse content of YAML configuration file to dict'''
+
+  # Open file stream
+  stream = open(config_file, 'r')
+
+  # Get at dictionary of the data
+  config_dict = yaml.load(stream)
+
+  # Close file
+  stream.close()
+
+  return config_dict
 
 
 def main():
@@ -789,6 +838,7 @@ def main():
         # Parse the command line arguments
         args = parse_args()
 
+        # FIXME: Allow log file to be set from config file
         # Configure logging
         logging.basicConfig(
           level = eval("logging." + args.log_level),
@@ -796,16 +846,48 @@ def main():
           format='%(asctime)s:%(levelname)s:%(message)s'
           )
 
+        # Get credentials from CLI (Including environment vars)
+        wb_url = args.workbook_url
+        wb_user = args.workbook_user
+        wb_password = args.workbook_password
+
+        # Get configuration in YAML file
+        config = parse_config(args.conf_file)
+
+        # Fall back to credentials in config file
+        if not wb_url:
+          wb_url = config['workbook']['url']
+          wb_user = config['workbook']['user']
+          wb_password = config['workbook']['password']
+
+        # Jobs with these states are considered active
+        global ACTIVE_JOBS
+        ACTIVE_JOBS = config['workbook'].get('active_jobs', [0,1,2,3])
+        if not isinstance(ACTIVE_JOBS, list):
+          raise ValueError("Active job states is not a list")
+
+        # Only get data on these companies. If empty list,
+        # get data for all companies in Workbook
+        global COMPANIES_TO_GET
+        COMPANIES_TO_GET = config['workbook'].get('companies', [])
+        if not isinstance(COMPANIES_TO_GET, list):
+          raise ValueError("Value companies is not a list in config file")
+
+        global FINANCE_ACCOUNT_TYPES
+        FINANCE_ACCOUNT_TYPES = config['workbook'].get('finance_account_types', [3])
+        if not isinstance(FINANCE_ACCOUNT_TYPES, list):
+          raise ValueError("Value finance_account_types is not a list in config file")
+
         # Instantiate collector
         REGISTRY.register(
             WorkbookCollector(
-                args.workbook_url,
-                args.workbook_user,
-                args.workbook_password
+                wb_url,
+                wb_user,
+                wb_password
                 )
             )
 
-        # Start up the server to expose the metrics.
+        # Listen for scrape requests.
         start_http_server(args.port)
 
         # Run forever

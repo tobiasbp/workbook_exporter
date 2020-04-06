@@ -1,0 +1,13 @@
+workbook:
+  url: "https://example.workbook.dk/api"
+  user: "my_user"
+  password: "my_secret"
+  companies:
+    - 1
+  active_jobs:
+    - 0 
+    - 1
+    - 2
+    - 3
+  finance_account_types:
+    - 3

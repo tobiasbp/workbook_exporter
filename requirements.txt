@@ -1,2 +1,3 @@
 prometheus-client>=0.7.1
 workbook-api>=0.0.11
+pyyaml>=3.13
