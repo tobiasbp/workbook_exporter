@@ -2,6 +2,7 @@
 
 import argparse
 from datetime import datetime, timedelta
+import logging
 import os
 import random
 import time
@@ -130,6 +131,8 @@ class WorkbookCollector(object):
 
     def collect(self):
 
+        logging.info("Getting data from Workbook.")
+
         # Metric for status on getting data from WB
         workbook_up = GaugeMetricFamily(
             'workbook_up', 'Is data beeing pulled from Workbook')
@@ -139,11 +142,11 @@ class WorkbookCollector(object):
 
         # Get all the data from WB
         try:
+
             # A dictionary mapping id to ISO name
             self.currencies = {c['Id']:c['Iso4127'] for c in self.wb.get_currencies()}
 
             # A dictionary mapping id to company name
-            #companies = {c['Id']:c['Name'] for c in self.wb.get_companies(active=True)}
             companies = {c['Id']:c for c in self.wb.get_companies(active=True)}
 
             # Add currency_id to companies
@@ -161,7 +164,6 @@ class WorkbookCollector(object):
             # EMployee ID is key
             capacity_profiles = {}
             for e in employees.values():
-              #print(e['EmployeeName'], e['TimeRegistration'])
               # Get profile for employee
               assert not e['Id'] in capacity_profiles.keys()
 
@@ -214,11 +216,13 @@ class WorkbookCollector(object):
                     FINANCE_ACCOUNT_BALANCE_FIELD, 0)
 
         except Exception as e:
-            print("Error when getting data from Workbook: {}".format(e))
+            logging.error("Could not get data from Workbook: {}".format(e))
             # Report no data from Workbook
             workbook_up.add_metric([], 0)
             yield workbook_up
             return
+        else:
+          logging.info("Done getting data from Workbook")
 
         # FINANCE ACCOUNTS
 
@@ -247,6 +251,7 @@ class WorkbookCollector(object):
         credit_buckets = [-50000, -25000, -10000, 0, 10000, 25000, 50000]
         debit_buckets = [-50000, -25000, -10000, 0, 10000, 25000, 50000, 100000]
 
+        # FIXME: Add list of company ids to look for
         # Days to look in to the past for timeentries
         time_entry_days = 7
 
@@ -654,11 +659,21 @@ class WorkbookCollector(object):
             workbook_up.add_metric([], 1)
         yield workbook_up
 
+        if wb_error:
+          logging.error("Error exporting data from workbook")
+        else:
+          logging.info("Done exporting data from workbook")
+
 
 def parse_args():
     '''
     Parse the command line arguments
     '''
+
+    # Defaults
+    default_port = 9701
+    default_log = '/var/log/workbook_exporter.log'
+    default_level = 'INFO'
 
     # Parser object
     parser = argparse.ArgumentParser(
@@ -690,14 +705,33 @@ def parse_args():
         default=os.environ.get('WORKBOOK_PASSWORD', 'workbook-password')
     )
 
-    # Poprt to listen on
+    # Port to listen on
     parser.add_argument(
         '--port',
-        type=int,
+        metavar=default_port,
         required=False,
-        help='Port to recieve request on. Defaults to 9701.',
-        default=9701
+        type=int,
+        help='Port to recieve request on.',
+        default=default_port
     )
+
+    # Location of log file
+    parser.add_argument(
+        '--log-file',
+        metavar=default_log,
+        required=False,
+        help='Location of log file.',
+        default=default_log
+    )
+
+    # Log level
+    parser.add_argument(
+      "--log-level",
+      metavar=default_level,
+      choices=['DEBUG', 'INFO', 'WARNING', 'ALL'],
+      default=default_level,
+      help="Set log level to one of: DEBUG, INFO, WARNING , ALL."
+      )
 
     return parser.parse_args()
 
@@ -708,6 +742,14 @@ def main():
         # Parse the command line arguments
         args = parse_args()
 
+        # Configure logging
+        logging.basicConfig(
+          level = eval("logging." + args.log_level),
+          filename = args.log_file,
+          format='%(asctime)s:%(levelname)s:%(message)s'
+          )
+
+        # Instantiate collector
         REGISTRY.register(
             WorkbookCollector(
                 args.workbook_url,
@@ -718,11 +760,11 @@ def main():
 
         # Start up the server to expose the metrics.
         start_http_server(args.port)
-        
+
         # Generate some requests.
-        while True:
-          pass
-          process_request(random.random())
+        #while True:
+        #  pass
+        #  #process_request(random.random())
 
     except KeyboardInterrupt:
         print(" Interrupted by keyboard")
