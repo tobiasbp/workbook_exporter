@@ -142,25 +142,31 @@ class WorkbookCollector(object):
         # Assume no problems with getting data from Workbook
         wb_error = False
 
+        # How many requests were made to workbook?
+        no_of_wb_requests = 0
         # Get all the data from WB
         try:
 
             # A dictionary mapping id to ISO name
             self.currencies = {c['Id']:c['Iso4127'] for c in self.wb.get_currencies()}
+            no_of_wb_requests += 1
 
             # A dictionary mapping id to company name
             companies = {c['Id']:c for c in self.wb.get_companies(active=True)}
+            no_of_wb_requests += 1
 
             # Add currency_id to companies
             for c_id, c_data in companies.items():
               # Get full company info from WB
               c_info = self.wb.get_company(CompanyId=c_id)
+              no_of_wb_requests += 1
               # Add currency to company dict
               c_data['CurrencyId'] = c_info['CurrencyID']
 
             # A dictionary mapping IDs to employees
             employees = \
               {e['Id']:e for e in self.wb.get_employees(Active=True)}
+            no_of_wb_requests += 1
 
             # Capacity profiles (Hours pr/day for employees)
             # EMployee ID is key
@@ -172,6 +178,7 @@ class WorkbookCollector(object):
               # Save latest (FIXME) profile for employee
               # FIXME: Choice must be based on field ValidFrom
               p = self.wb.get_capacity_profiles(e['Id'])[-1]
+              no_of_wb_requests += 1
 
               # Add calculated sum of work hours pr. week to profile
               p['hours_week'] = 0
@@ -184,15 +191,19 @@ class WorkbookCollector(object):
 
             # A dictionary mapping IDs to departments
             departments = {d['Id']:d for d in self.wb.get_departments()}
+            no_of_wb_requests += 1
 
             # A dictionary mapping IDs to jobs
             jobs = {j['Id']:j for j in self.wb.get_jobs(Status=ACTIVE_JOBS)}
+            no_of_wb_requests += 1
 
             # A dictionary mapping IDs to creditors
             creditors = {c['Id']:c for c in self.wb.get_creditors()}
+            no_of_wb_requests += 1
 
             # Employee prices
             prices = self.wb.get_employee_prices_hour(ActiveEmployees=True)
+            no_of_wb_requests += 1
 
             # A list of accounts
             accounts = self.wb.get_finance_accounts(
@@ -204,6 +215,8 @@ class WorkbookCollector(object):
                 CompanyId=a['CompanyId'],
                 AccountId=a['Id'],
                 )
+              no_of_wb_requests += 1
+
               # Makes sure we have data. Some typeIds do not.
               if len(balance_list) > 0:
                   # We want the latest balance entry.
@@ -234,11 +247,20 @@ class WorkbookCollector(object):
           g = GaugeMetricFamily(
             'workbook_finance_account_balance',
             'Balance of finance account',
-            labels=['company_id', 'currency', 'account_id', 'account_description', 'account_number']
+            labels=[
+              'company_id',
+              'currency',
+              'account_id',
+              'account_description',
+              'account_number'
+              ]
             )
           g.add_metric(
-            [str(a['CompanyId']), str(self.currencies[currency_id]), str(a['Id']), str(a['AccountDescription']), str(a['AccountNumber'])],
-            a['balance']
+              [str(a['CompanyId']),
+              str(self.currencies[currency_id]), 
+              str(a['Id']), str(a['AccountDescription']),
+              str(a['AccountNumber'])],
+              a['balance']
             )
           yield g
 
@@ -282,6 +304,7 @@ class WorkbookCollector(object):
         try:
           time_entries = self.wb.get_time_entries(
             Start=start_date, End=end_date,HasTimeRegistration=True)
+          no_of_wb_requests += 1
         except Exception as e:
             print("Could not get WB time entries with error: {}".format(e))
             wb_error = True
@@ -462,6 +485,7 @@ class WorkbookCollector(object):
             try:
                 # Get active employees
                 employees = self.wb.get_employees(Active=True,CompanyId=company_id)
+                no_of_wb_requests += 1
             except Exception as e:
                 print("Could not get WB employees with error: {}".format(e))
                 wb_error = True
@@ -486,6 +510,7 @@ class WorkbookCollector(object):
             try:
                 # Get active jobs
                 jobs = self.wb.get_jobs(Status=ACTIVE_JOBS, CompanyId=company_id)
+                no_of_wb_requests += 1
             except Exception as e:
                 print("Could not get WB jobs with error: {}".format(e))
                 wb_error = True
@@ -611,6 +636,7 @@ class WorkbookCollector(object):
             currency = self.currencies[currency_id]
             try:
                 debtors = self.wb.get_debtors_balance(company_id=company_id)
+                no_of_wb_requests += 1
             except Exception as e:
                 print("Error: {}".format(e))
                 wb_error = True
@@ -652,9 +678,15 @@ class WorkbookCollector(object):
                      ['company_id', currency],
                      [str(company_id), currency])
 
-        
-        # PROBLEMS WITH WORKBOOK? #
+        # How many requests did we make to the Workbook API?
+        g = GaugeMetricFamily(
+            'workbook_no_of_api_requests',
+            'Number of requests to Workbook performed during scrape')
+        g.add_metric([], no_of_wb_requests)
+        yield g
 
+
+        # PROBLEMS WITH WORKBOOK? #
         if wb_error:
             workbook_up.add_metric([], 0)
         else:
