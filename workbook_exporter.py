@@ -824,7 +824,7 @@ def parse_config(config_file):
   stream = open(config_file, 'r')
 
   # Get at dictionary of the data
-  config_dict = yaml.load(stream)
+  config_dict = yaml.load(stream, Loader=yaml.FullLoader)
 
   # Close file
   stream.close()
