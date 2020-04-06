@@ -20,7 +20,7 @@ TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 FINANCE_ACCOUNT_BALANCE_FIELD = 'AmountBeginning'
 
 # Create a metric to track time spent and requests made.
-REQUEST_TIME = Summary('request_processing_seconds', 'Time spent processing request')
+#REQUEST_TIME = Summary('request_processing_seconds', 'Time spent processing request')
 
 # Fields to use for summing hours/week
 EMPLOYEE_HOURS_CAPACITY_FIELDS = [
@@ -34,10 +34,10 @@ EMPLOYEE_HOURS_CAPACITY_FIELDS = [
     ]
 
 # Decorate function with metric.
-@REQUEST_TIME.time()
-def process_request(t):
-    """A dummy function that takes some time."""
-    time.sleep(t)
+#@REQUEST_TIME.time()
+#def process_request(t):
+#    """A dummy function that takes some time."""
+#    time.sleep(t)
 
 
 def parse_date(wb_time):
@@ -892,7 +892,8 @@ def main():
 
         # Run forever
         while True:
-          pass
+          time.sleep(1)
+          #pass
         #  #process_request(random.random())
 
     except KeyboardInterrupt:
