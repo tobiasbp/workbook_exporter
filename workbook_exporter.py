@@ -135,6 +135,8 @@ class WorkbookCollector(object):
 
         logging.info("Getting data from Workbook.")
 
+        scrape_start_time = datetime.now()
+
         # Metric for status on getting data from WB
         workbook_up = GaugeMetricFamily(
             'workbook_up', 'Is data beeing pulled from Workbook')
@@ -685,18 +687,29 @@ class WorkbookCollector(object):
         g.add_metric([], no_of_wb_requests)
         yield g
 
+        scrape_time_seconds = (datetime.now()-scrape_start_time).seconds
+        # How long did the scape take?
+        g = GaugeMetricFamily(
+            'workbook_scrape_duration_seconds',
+            'Number of seconds it took to perform scrape')
+        g.add_metric([], scrape_time_seconds)
+        yield g
 
-        # PROBLEMS WITH WORKBOOK? #
+
+        # Problems getting data from workbook?
         if wb_error:
             workbook_up.add_metric([], 0)
         else:
             workbook_up.add_metric([], 1)
         yield workbook_up
 
+
+
         if wb_error:
           logging.error("Error exporting data from workbook")
         else:
-          logging.info("Done exporting data from workbook")
+          logging.info("Scrape finished in {} seconds"
+            .format(scrape_time_seconds))
 
 
 def parse_args():
