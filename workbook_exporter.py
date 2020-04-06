@@ -38,7 +38,7 @@ EMPLOYEE_HOURS_CAPACITY_FIELDS = [
     ]
 
 # The currency to use for reporting
-REPORTING_CURRENCY_ID = 1
+#REPORTING_CURRENCY_ID = 1
 
 # Decorate function with metric.
 @REQUEST_TIME.time()
@@ -114,6 +114,7 @@ class WorkbookCollector(object):
         # Workbook API object
         self.wb = workbook_api.WorkbookAPI(wb_url, wb_user, wb_pass)
 
+    '''
     def convert_to_reporting_currency(self, amount, currency_id, company_id):
 
         # Don't convert if amount is in reporting currency
@@ -128,6 +129,7 @@ class WorkbookCollector(object):
         #print("Converted:", amount, self.currencies[currency_id], "to",
         #  converted_amount, self.currencies[REPORTING_CURRENCY_ID])
         return converted_amount
+    '''
 
     def collect(self):
 
@@ -761,9 +763,9 @@ def main():
         # Start up the server to expose the metrics.
         start_http_server(args.port)
 
-        # Generate some requests.
-        #while True:
-        #  pass
+        # Run forever
+        while True:
+          pass
         #  #process_request(random.random())
 
     except KeyboardInterrupt:
