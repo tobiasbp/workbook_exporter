@@ -369,15 +369,23 @@ class WorkbookCollector(object):
                 time_entries_data[c_id][d_id]['job_ids'].add(j_id)
 
             # Labels to use for the following metrics
-            label_names = ['days','company_id', 'department_id']
+            label_names = [
+              'days',
+              'company_id',
+              'department_id',
+              'department_name'
+              ]
 
+            # Run through the time entries
             for c_id, c_data in time_entries_data.items():
                 for d_id, d_data in c_data.items():
                     # Values for the labels
                     label_values = [
                         str(time_entry_days),
                         str(c_id),
-                        str(d_id)]
+                        str(d_id),
+                        departments[d_id]['Name'].strip()
+                        ]
 
                     # A list of IDs of all employees in this department
                     d_employees = [
@@ -453,12 +461,12 @@ class WorkbookCollector(object):
                 try:
                   # The employee
                   e = employees[p['EmployeeId']]
-
-                  c_id = employees[p['EmployeeId']]['CompanyId']
+                  # Employee's company
+                  c_id = e['CompanyId']
                 except KeyError:
-                  # Abort because employee from price is not
-                  # employeed in one of the companies we are
-                  # reporting data for (Can not filter on companies for prices)
+                  # Abort because employee ID from price is not
+                  # in employees (Not employed at company we report for)
+                  # (Can not filter on companies for prices)
                   continue
 
                 # Don't process users not registering time
@@ -486,17 +494,17 @@ class WorkbookCollector(object):
 
             # Loop through company price dicts
             for c_id, prices in price_dict.items():
+
               currency_id = companies[c_id]['CurrencyId']
               currency = self.currencies[currency_id]
 
-              # FIXME: Make sure the company is in our list
-              # It could possible be changed from config
               # Store observations for company here
               observations = {
                 'Profit': [],
                 'HoursCost': [],
                 'HoursSale': []
                 }
+
               # Loop price data, and add to observations dicts
               for e_id, p in prices.items():
                 for field in observations.keys():
