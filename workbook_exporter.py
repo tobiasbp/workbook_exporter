@@ -448,16 +448,25 @@ class WorkbookCollector(object):
             price_dict = {c_id:{} for c_id in companies.keys()}
             #print(price_dict)
             for p in prices:
-                # FIXME: We should abort if this ID is not in our
+
                 # company list
                 try:
+                  # The employee
+                  e = employees[p['EmployeeId']]
+
                   c_id = employees[p['EmployeeId']]['CompanyId']
                 except KeyError:
                   # Abort because employee from price is not
                   # employeed in one of the companies we are
                   # reporting data for (Can not filter on companies for prices)
                   continue
-                  
+
+                # Don't process users not registering time
+                if not e['TimeRegistration']:
+                  logging.debug("Ignoring user {} when reporting employee prices"
+                    .format(e['EmployeeName']))
+                  continue
+
                 # If we allready have data on the current employee
                 # We may need to update the price
                 if price_dict[c_id].get(p['EmployeeId']):
