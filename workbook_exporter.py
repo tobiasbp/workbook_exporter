@@ -179,13 +179,15 @@ class WorkbookCollector(object):
               # Add currency to company dict
               c_data['CurrencyId'] = c_info['CurrencyID']
 
+
             # A dictionary mapping IDs to employees
-            employees = \
-              {e['Id']:e for e in self.wb.get_employees(
-                Active=True,
-                CompanyId=companies.keys())
-                }
-            no_of_wb_requests += 1
+            employees = {}
+            # Get employees for all companies
+            for c_id in companies.keys():
+              for e in self.wb.get_employees(Active=True, CompanyId=c_id):
+                employees[e['Id']] = e
+              no_of_wb_requests += 1
+
 
             # Capacity profiles (Hours pr/day for employees)
             # EMployee ID is key
@@ -208,30 +210,36 @@ class WorkbookCollector(object):
               # Add the profile to the profiles dict 
               capacity_profiles[e['Id']] = p
 
+
             # A dictionary mapping IDs to departments
             departments = {d['Id']:d for d in self.wb.get_departments()}
             no_of_wb_requests += 1
 
-            # A dictionary mapping IDs to jobs
-            jobs = {j['Id']:j for j in self.wb.get_jobs(
-              Status=ACTIVE_JOBS,
-              CompanyId=companies.keys())
-              }
-            no_of_wb_requests += 1
+            # A dictionary mapping Job IDs to jobs
+            jobs = {}
+            # Get jobs for all companies
+            for c_id in companies.keys():
+              for j in self.wb.get_jobs(Status=ACTIVE_JOBS,CompanyId=c_id):
+                jobs[j['Id']] = j
+                no_of_wb_requests += 1
+
 
             # A dictionary mapping IDs to creditors
             creditors = {c['Id']:c for c in self.wb.get_creditors()}
             no_of_wb_requests += 1
 
+
             # Employee prices
             prices = self.wb.get_employee_prices_hour(ActiveEmployees=True)
             no_of_wb_requests += 1
 
-            # Get a list of accounts
+
+            # Get a list of finance accounts
             accounts = self.wb.get_finance_accounts(
               TypeIds=FINANCE_ACCOUNT_TYPES,
               Companies=companies.keys())
             no_of_wb_requests += 1
+
 
             # Add balance to accounts
             for a in accounts:
