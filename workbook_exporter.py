@@ -83,6 +83,7 @@ def data_to_histogram(observations, buckets):
 
     return(buckets_list, sum(observations))
 
+
 def build_histogram(observations, buckets, name, desc, label_names, label_values):
 
     # Histogram billable (Total)
@@ -162,6 +163,12 @@ class WorkbookCollector(object):
               # Delete the company IDs from the companies dict
               for c_id in companies_to_delete:
                 companies.pop(c_id, None)
+
+            # Warn if companies in COMPANIES_TO_GET are not found in WB
+            only_in_config = set(COMPANIES_TO_GET) - set(companies.keys())
+            if only_in_config:
+              logging.warning(("Company IDs {} not in Workbook. Likely a wrong" + \
+                " ID in config 'companies'.").format(only_in_config))
 
 
             # Add currency_id to companies
@@ -816,6 +823,7 @@ def parse_args():
     )
 
     return parser.parse_args()
+
 
 def parse_config(config_file):
   '''Parse content of YAML configuration file to dict'''
