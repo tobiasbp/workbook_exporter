@@ -324,7 +324,7 @@ class WorkbookCollector(object):
 
         # Top key is company_id:department_id
         time_entries_data = {c_id:{} for c_id in companies.keys()}
-
+        # Add departments
         for c_id, c_data in time_entries_data.items():
             for d_id, d_data in departments.items():
                 if d_data['CompanyId'] == c_id:
@@ -345,7 +345,6 @@ class WorkbookCollector(object):
             print("Could not get WB time entries with error: {}".format(e))
             wb_error = True
         else:
-            # FIXME: Label department
             # FIXME: Number of clients worked on
             for e in time_entries:
                 # Sometimes a resource is no longer an employee
@@ -463,6 +462,8 @@ class WorkbookCollector(object):
                   e = employees[p['EmployeeId']]
                   # Employee's company
                   c_id = e['CompanyId']
+                  # Employees's department
+                  d_id = e['DepartmentId']
                 except KeyError:
                   # Abort because employee ID from price is not
                   # in employees (Not employed at company we report for)
@@ -475,69 +476,79 @@ class WorkbookCollector(object):
                     .format(e['EmployeeName']))
                   continue
 
+                # Add department dict if needed
+                if d_id not in price_dict[c_id]:
+                  price_dict[c_id][d_id] = {}
+
                 # If we allready have data on the current employee
                 # We may need to update the price
-                if price_dict[c_id].get(p['EmployeeId']):
+                if price_dict[c_id][d_id].get(p['EmployeeId']):
                     # Date for currently known data
                     existing_date = parse_date(
-                    price_dict[c_id][p['EmployeeId']]['ValidFrom']
-                    )
+                      price_dict[c_id][d_id][p['EmployeeId']]['ValidFrom'])
+
                     # Dato for this price
                     new_date = parse_date(p['ValidFrom'])
                     # Update data if this entry is newer than existing
                     # date, but not in the future
                     if new_date > existing_date and new_date <= datetime.now():
-                        price_dict[c_id][p['EmployeeId']] = p
+                        price_dict[c_id][d_id][p['EmployeeId']] = p
                 else:
                     # Add missing date
-                    price_dict[c_id][p['EmployeeId']] = p
+                    price_dict[c_id][d_id][p['EmployeeId']] = p
 
             # Loop through company price dicts
-            for c_id, prices in price_dict.items():
+            for c_id, c_prices in price_dict.items():
+                for d_id, d_prices in c_prices.items():
+                    currency_id = companies[c_id]['CurrencyId']
+                    currency = self.currencies[currency_id]
+                    d_name = departments[d_id]['Name']
 
-              currency_id = companies[c_id]['CurrencyId']
-              currency = self.currencies[currency_id]
+                    # Store observations for company here
+                    observations = {
+                      'Profit': [],
+                      'HoursCost': [],
+                      'HoursSale': []
+                      }
 
-              # Store observations for company here
-              observations = {
-                'Profit': [],
-                'HoursCost': [],
-                'HoursSale': []
-                }
+                    # Loop price data, and add to observations dicts
+                    for e_id, p in d_prices.items():
+                      for field in observations.keys():
+                        # Add observation if present
+                        try:
+                          observations[field].append(p[field])
+                        except KeyError as e:
+                          observations[field].append(0.0)
+                          logging.warning("Missing key {} for employee '{}'. Inserted 0.0"
+                            .format(e, employees[p['EmployeeId']]['EmployeeName']))
 
-              # Loop price data, and add to observations dicts
-              for e_id, p in prices.items():
-                for field in observations.keys():
-                  # Add observation if present
-                  if p.get(field):
-                    observations[field].append(p.get(field))
+                    # PROFIT #
+                    yield build_histogram(
+                      observations['Profit'],
+                      profit_buckets,
+                      'workbook_employees_profit_ratio',
+                      'Estimated sales price of 1 hours work',
+                      ['company_id', 'department_id', 'department_name'],
+                      [str(c_id), str(d_id), d_name])
 
-              # PROFIT #
-              yield build_histogram(
-                observations['Profit'],
-                profit_buckets,
-                'workbook_employees_profit_ratio',
-                'Estimated sales price of 1 hours work',
-                ['company_id'],
-                [str(c_id)])
+                    # HOURS SALE #
+                    yield build_histogram(
+                      observations['HoursSale'],
+                      hours_sale_buckets,
+                      'workbook_employees_hours_sale',
+                      'Estimated sales price of 1 hours work',
+                      ['company_id', 'department_id', 'department_name', 'currency'],
+                      [str(c_id), str(d_id), d_name, currency])
 
-              # HOURS SALE #
-              yield build_histogram(
-                observations['HoursSale'],
-                hours_sale_buckets,
-                'workbook_employees_hours_sale',
-                'Estimated sales price of 1 hours work',
-                ['company_id', 'currency'],
-                [str(c_id), currency])
+                    # HOURS COST #
+                    yield build_histogram(
+                      observations['HoursCost'],
+                      hours_cost_buckets,
+                      'workbook_employees_hours_cost',
+                      'Estimated cost of 1 hours work',
+                      ['company_id', 'department_id', 'department_name', 'currency'],
+                      [str(c_id), str(d_id), d_name, currency])
 
-              # HOURS COST #
-              yield build_histogram(
-                observations['HoursCost'],
-                hours_cost_buckets,
-                'workbook_employees_hours_cost',
-                'Estimated cost of 1 hours work',
-                ['company_id', 'currency'],
-                [str(c_id), currency])
 
         # EMPLOYEES DAYS EMPLOYED #
         for company_id in companies.keys():
