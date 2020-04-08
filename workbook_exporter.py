@@ -666,7 +666,7 @@ class WorkbookCollector(object):
                 yield build_histogram(
                    client_age_billable,
                    CLIENT_AGE_BUCKETS,
-                   'workbook_active_client_age_days',
+                   'workbook_active_customers_age_days',
                    'Days since client was created',
                    ['company_id', 'billable'],
                    [str(company_id), '1'])
@@ -688,7 +688,7 @@ class WorkbookCollector(object):
                 yield build_histogram(
                    client_age_non_billable,
                    CLIENT_AGE_BUCKETS,
-                   'workbook_active_client_age_days',
+                   'workbook_active_customers_age_days',
                    'Days since client was created',
                    ['company_id', 'billable'],
                    [str(company_id), '0'])
