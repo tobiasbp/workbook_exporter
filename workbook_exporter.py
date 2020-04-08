@@ -271,6 +271,7 @@ class WorkbookCollector(object):
         else:
           logging.info("Done getting data from Workbook")
 
+
         # FINANCE ACCOUNTS
 
         for a in accounts:
@@ -574,6 +575,8 @@ class WorkbookCollector(object):
                    [str(company_id)])
 
 
+        # FIXME: Age of active clients
+        # FIXME: Active clients pr. department
         # JOBS #
         for company_id in companies.keys():
             try:
@@ -599,6 +602,7 @@ class WorkbookCollector(object):
                     date_created = parse_date(j.get('CreateDate'))
                     # End date for job
                     date_end = parse_date(j.get('EndDate'))
+                    # FIXME BUG: THIS IS DAYS TO END. NOT AGE!!!
                     # Add observation
                     if j.get('Billable'):
                         observations['billable'].append((date_end - datetime.today()).days)
@@ -643,6 +647,51 @@ class WorkbookCollector(object):
                   len(active_clients['non_billable'].union(active_clients['billable']))
                   )
                 yield cust_total
+
+                # Active client age
+                # Billable
+                client_age_billable = []
+                for c_id in list(active_clients['billable']):
+                  c = self.wb.get_costumers(costumer_id=c_id)
+                  no_of_wb_requests += 1
+                  # Observe WonDate
+                  if c.get('WonDate'):
+                    won_date = parse_date(c.get('WonDate'))
+                    client_age_billable.append((datetime.today() - won_date).days)
+                  else:
+                    # Client has no WonDate?
+                    logging.warning("Customer {} with billable job has no 'WonDate' in Workbook".format(c['Name']))
+
+                # Client age histogram (billable)
+                yield build_histogram(
+                   client_age_billable,
+                   CLIENT_AGE_BUCKETS,
+                   'workbook_active_client_age_days',
+                   'Days since client was created',
+                   ['company_id', 'billable'],
+                   [str(company_id), '1'])
+
+                # Non billable
+                client_age_non_billable = []
+                for c_id in list(active_clients['non_billable']):
+                  c = self.wb.get_costumers(costumer_id=c_id)
+                  no_of_wb_requests += 1
+                  # Observe WonDate
+                  if c.get('WonDate'):
+                    won_date = parse_date(c.get('WonDate'))
+                    client_age_non_billable.append((datetime.today() - won_date).days)
+                  else:
+                    # Client has no WonDate?
+                    logging.warning("Customer {} with non billable job has no 'WonDate' in Workbook".format(c['Name']))
+
+                # Client age histogram (Non billable)
+                yield build_histogram(
+                   client_age_non_billable,
+                   CLIENT_AGE_BUCKETS,
+                   'workbook_active_client_age_days',
+                   'Days since client was created',
+                   ['company_id', 'billable'],
+                   [str(company_id), '0'])
 
         # CREDIT #
         try:
@@ -925,6 +974,12 @@ def main():
         JOB_AGE_BUCKETS = config['data'].get('job_age_buckets')
         if not isinstance(JOB_AGE_BUCKETS, list):
           raise ValueError("Value job_age_buckets is not a list in config file")
+
+        global CLIENT_AGE_BUCKETS
+        CLIENT_AGE_BUCKETS = config['data'].get('client_age_buckets')
+        if not isinstance(CLIENT_AGE_BUCKETS, list):
+          raise ValueError("Value client_age_buckets is not a list in config file")
+
 
         # Instantiate collector
         REGISTRY.register(
