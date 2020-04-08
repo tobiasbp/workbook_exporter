@@ -11,3 +11,12 @@ workbook:
     - 3
   finance_account_types:
     - 3
+data:
+  job_age_buckets:
+    - 15
+    - 30
+    - 60
+    - 150
+    - 300
+    - 450
+    - 600

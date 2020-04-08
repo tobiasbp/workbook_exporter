@@ -302,7 +302,6 @@ class WorkbookCollector(object):
 
         # Buckets for histograms
         days_employed_buckets = [3*30, 5*30, 2*12*30+9*30, 5*12*30+8*30, 8*12*30+7*30]
-        job_age_buckets = [15, 30, 2*30, 6*30, 365]
         profit_buckets = [0.2, 0.4, 0.6, 0.8]
         hours_sale_buckets = [500, 1000, 1500, 2000]
         hours_cost_buckets = [250, 500, 750, 1000]
@@ -611,7 +610,7 @@ class WorkbookCollector(object):
                 # Job age histogram (billable)
                 yield build_histogram(
                    observations['billable'],
-                   job_age_buckets,
+                   JOB_AGE_BUCKETS,
                    'workbook_jobs_age_days',
                    'Days since job was created',
                    ['company_id', 'billable'],
@@ -620,7 +619,7 @@ class WorkbookCollector(object):
                 # Job age histogram (Non billable)
                 yield build_histogram(
                    observations['non_billable'],
-                   job_age_buckets,
+                   JOB_AGE_BUCKETS,
                    'workbook_jobs_age_days',
                    'Days since job was created',
                    ['company_id', 'billable'],
@@ -921,6 +920,11 @@ def main():
         FINANCE_ACCOUNT_TYPES = config['workbook'].get('finance_account_types', [3])
         if not isinstance(FINANCE_ACCOUNT_TYPES, list):
           raise ValueError("Value finance_account_types is not a list in config file")
+
+        global JOB_AGE_BUCKETS
+        JOB_AGE_BUCKETS = config['data'].get('job_age_buckets')
+        if not isinstance(JOB_AGE_BUCKETS, list):
+          raise ValueError("Value job_age_buckets is not a list in config file")
 
         # Instantiate collector
         REGISTRY.register(
