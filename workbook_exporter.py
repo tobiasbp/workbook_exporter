@@ -189,17 +189,41 @@ class WorkbookCollector(object):
               no_of_wb_requests += 1
 
 
-            # Capacity profiles (Hours pr/day for employees)
+            # Capacity profiles (Hours pr/week for employees)
             # EMployee ID is key
             capacity_profiles = {}
             for e in employees.values():
-              # Get profile for employee
+              
+              # We should only see an employee ID once
               assert not e['Id'] in capacity_profiles.keys()
 
-              # Save latest (FIXME) profile for employee
-              # FIXME: Choice must be based on field ValidFrom
-              p = self.wb.get_capacity_profiles(e['Id'])[-1]
-              no_of_wb_requests += 1
+              # Get all profiles for employee
+              try:
+                profiles = self.wb.get_capacity_profiles(e['Id'])
+                no_of_wb_requests += 1
+              except Exception as e:
+                logging.error("Could not get capacity profiles for employee '{}' with error: {}"
+                  .format(e['Id'], e))
+                # Abort this iteration
+                continue
+
+              logging.debug("No of capacity profiles for user '{}': {}"
+                .format(e['EmployeeName'], len(profiles)))
+
+              # Pick 1st profile in list
+              p = profiles[-1]
+
+              # Is there a newer profile in in list?
+              for x in profiles:
+                # Abort if profile is in the future
+                if parse_date(x['ValidFrom']) > datetime.now():
+                  continue
+                # Use this profile, if valid from is more recent than current
+                if parse_date(x['ValidFrom']) > parse_date(p['ValidFrom']):
+                  p = x
+
+              logging.debug("Using capacity profile valid from {} for user '{}'"
+                .format(p['ValidFrom'], e['EmployeeName']))
 
               # Add calculated sum of work hours pr. week to profile
               p['hours_week'] = 0
@@ -930,7 +954,6 @@ def main():
         # Parse the command line arguments
         args = parse_args()
 
-        # FIXME: Allow log file to be set from config file
         # Configure logging
         logging.basicConfig(
           level = eval("logging." + args.log_level),
