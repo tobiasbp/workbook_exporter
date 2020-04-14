@@ -575,7 +575,7 @@ class WorkbookCollector(object):
                    [str(company_id)])
 
 
-        # FIXME: Age of active clients
+        # FIXME: Add config with costumers to ignore (Pseudo costumers)
         # FIXME: Active clients pr. department
         # JOBS #
         for company_id in companies.keys():
@@ -584,7 +584,7 @@ class WorkbookCollector(object):
                 jobs = self.wb.get_jobs(Status=ACTIVE_JOBS, CompanyId=company_id)
                 no_of_wb_requests += 1
             except Exception as e:
-                print("Could not get WB jobs with error: {}".format(e))
+                logging.error("Could not get WB jobs with error: {}".format(e))
                 wb_error = True
             else:
                 # Gather observations (Days since employment)
@@ -602,13 +602,13 @@ class WorkbookCollector(object):
                     date_created = parse_date(j.get('CreateDate'))
                     # End date for job
                     date_end = parse_date(j.get('EndDate'))
-                    # FIXME BUG: THIS IS DAYS TO END. NOT AGE!!!
-                    # Add observation
+                    # Days since job was created
+                    job_age = (datetime.today() - date_created).days
                     if j.get('Billable'):
-                        observations['billable'].append((date_end - datetime.today()).days)
+                        observations['billable'].append(job_age)
                         active_clients['billable'].add(j['CustomerId'])
                     else:
-                        observations['non_billable'].append((date_end - datetime.today()).days)
+                        observations['non_billable'].append(job_age)
                         active_clients['non_billable'].add(j['CustomerId'])
 
                 # Job age histogram (billable)
