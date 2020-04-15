@@ -15,8 +15,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 16,
-  "iteration": 1586951526579,
+  "id": 21,
+  "iteration": 1586956967319,
   "links": [],
   "panels": [
     {
@@ -740,9 +740,9 @@
       "fillGradient": 0,
       "gridPos": {
         "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 32
+        "w": 12,
+        "x": 12,
+        "y": 24
       },
       "id": 31,
       "legend": {
@@ -766,13 +766,6 @@
       "renderer": "flot",
       "repeat": "department_name",
       "repeatDirection": "h",
-      "scopedVars": {
-        "department_name": {
-          "selected": false,
-          "text": "Kontrapunkt Japan",
-          "value": "Kontrapunkt Japan"
-        }
-      },
       "seriesOverrides": [],
       "spaceLength": 10,
       "stack": false,
@@ -807,97 +800,6 @@
           "format": "h",
           "label": null,
           "logBase": 2,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus",
-      "description": "The percentage of people in department with registered hours for the previous 7 days.",
-      "fill": 1,
-      "fillGradient": 0,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 48
-      },
-      "id": 30,
-      "interval": "",
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": true,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 1,
-      "links": [],
-      "nullPointMode": "null",
-      "options": {
-        "dataLinks": []
-      },
-      "percentage": false,
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "repeat": null,
-      "repeatDirection": "v",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "sum(workbook_time_entry_people_with_time{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"})/sum(workbook_time_entry_people_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"})",
-          "legendFormat": "{{department_name}}",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "Departments: People with time entered",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "percentunit",
-          "label": null,
-          "logBase": 1,
           "max": null,
           "min": null,
           "show": true
@@ -960,31 +862,6 @@
         "query": "your_prometheus_job",
         "skipUrlSync": false,
         "type": "constant"
-      },
-      {
-        "allValue": null,
-        "current": {
-          "text": "",
-          "value": ""
-        },
-        "datasource": "Prometheus",
-        "definition": "workbook_time_entry_jobs_total{job=~\"[[wb_job]]\",company_id=~\"[[company_id]]\"}",
-        "hide": 2,
-        "includeAll": false,
-        "label": null,
-        "multi": false,
-        "name": "department_name",
-        "options": [],
-        "query": "workbook_time_entry_jobs_total{job=~\"[[wb_job]]\",company_id=~\"[[company_id]]\"}",
-        "refresh": 2,
-        "regex": "/.*department_name=\"([^\"]*)\".*/",
-        "skipUrlSync": false,
-        "sort": 0,
-        "tagValuesQuery": "",
-        "tags": [],
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
       }
     ]
   },
@@ -994,20 +871,14 @@
   },
   "timepicker": {
     "refresh_intervals": [
-      "5s",
-      "10s",
-      "30s",
-      "1m",
       "5m",
-      "15m",
+      "10m",
       "30m",
-      "1h",
-      "2h",
-      "1d"
+      "1h"
     ]
   },
   "timezone": "",
   "title": "Workbook (Projects)",
   "uid": "",
-  "version": 18
+  "version": 20
 }
