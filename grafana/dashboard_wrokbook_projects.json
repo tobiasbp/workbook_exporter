@@ -1,0 +1,1013 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 16,
+  "iteration": 1586951526579,
+  "links": [],
+  "panels": [
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "description": "The number of jobs worked on for the previous 7 days.",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 41,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "workbook_time_entry_jobs_total{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "legendFormat": "{{department_name}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Departments: Jobs worked  on",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "description": "No of clients with active jobs",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 12,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": "Company",
+      "repeatDirection": "v",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "workbook_active_customers_billable_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "legendFormat": "Billable",
+          "refId": "A"
+        },
+        {
+          "expr": "workbook_active_customers_total_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}-workbook_active_customers_billable_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "legendFormat": "Non billable",
+          "refId": "C"
+        },
+        {
+          "expr": "workbook_active_customers_total_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "legendFormat": "Total",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "No of active clients",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "description": "The difference between target and percentage of billable time for the previous 7 days.",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 27,
+      "interval": "",
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "(workbook_time_entry_hours_billable{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}/workbook_time_entry_hours_capacity_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}) - ignoring(days)(workbook_employees_profit_ratio_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}/workbook_employees_profit_ratio_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
+          "legendFormat": "{{department_name}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Departments: Target difference",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "percentunit",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 32,
+      "interval": "",
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "Average",
+          "dashLength": 6,
+          "dashes": true,
+          "fill": 0
+        },
+        {
+          "alias": "/15/",
+          "lines": false,
+          "points": true,
+          "yaxis": 2
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "workbook_jobs_age_days_sum{job=~\"[[wb_job]]\",company_id=~\"[[company_id]]\",billable=\"1\"}/workbook_jobs_age_days_count{job=~\"[[wb_job]]\",company_id=~\"[[company_id]]\",billable=\"1\"}",
+          "legendFormat": "Average",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.2, workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
+          "legendFormat": "20th percentile",
+          "refId": "C"
+        },
+        {
+          "expr": "histogram_quantile(0.4, workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
+          "legendFormat": "40th percentile",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.6, workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
+          "legendFormat": "60th percentile",
+          "refId": "D"
+        },
+        {
+          "expr": "histogram_quantile(0.8, workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
+          "legendFormat": "80th percentile",
+          "refId": "E"
+        },
+        {
+          "expr": "histogram_quantile(0.9, workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
+          "legendFormat": "90th percentile",
+          "refId": "F"
+        },
+        {
+          "expr": "workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",le=\"15\"}",
+          "legendFormat": "Jobs 15 days or less old",
+          "refId": "G"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Job age (Billable)",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "decimals": null,
+          "format": "d",
+          "label": null,
+          "logBase": 2,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "none",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "description": "The percentage of billable time for the previous 7 days.",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 28,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "(workbook_time_entry_hours_billable{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}/workbook_time_entry_hours_capacity_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"})",
+          "legendFormat": "{{department_name}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Departments: Billable time",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "percentunit",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 42,
+      "interval": "",
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "Average",
+          "dashLength": 6,
+          "dashes": true,
+          "fill": 0
+        },
+        {
+          "alias": "/15/",
+          "lines": false,
+          "points": true,
+          "yaxis": 2
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "workbook_jobs_age_days_sum{job=~\"[[wb_job]]\",company_id=~\"[[company_id]]\",billable=\"1\"}/workbook_jobs_age_days_count{job=~\"[[wb_job]]\",company_id=~\"[[company_id]]\",billable=\"0\"}",
+          "legendFormat": "Average",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.2, workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
+          "legendFormat": "20th percentile",
+          "refId": "C"
+        },
+        {
+          "expr": "histogram_quantile(0.4, workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
+          "legendFormat": "40th percentile",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.6, workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
+          "legendFormat": "60th percentile",
+          "refId": "D"
+        },
+        {
+          "expr": "histogram_quantile(0.8, workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
+          "legendFormat": "80th percentile",
+          "refId": "E"
+        },
+        {
+          "expr": "histogram_quantile(0.9, workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
+          "legendFormat": "90th percentile",
+          "refId": "F"
+        },
+        {
+          "expr": "workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",le=\"15\"}",
+          "legendFormat": "Jobs 15 days or less old",
+          "refId": "G"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Job age (Non billable)",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "decimals": null,
+          "format": "d",
+          "label": null,
+          "logBase": 2,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "none",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "description": "The ratio of hours entered to expected hours for the previous 7 days. Above 100% is overtime.",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 29,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "workbook_time_entry_hours_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}/workbook_time_entry_hours_capacity_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}",
+          "legendFormat": "{{department_name}}",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Departments: Time entered",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "percentunit",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "description": "The total number of hours registered for all people in the department during the previous 7 days.",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 31,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": "department_name",
+      "repeatDirection": "h",
+      "scopedVars": {
+        "department_name": {
+          "selected": false,
+          "text": "Kontrapunkt Japan",
+          "value": "Kontrapunkt Japan"
+        }
+      },
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "workbook_time_entry_hours_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}",
+          "legendFormat": "{{department_name}}",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Departments: Hours worked last 7 days",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "h",
+          "label": null,
+          "logBase": 2,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "description": "The percentage of people in department with registered hours for the previous 7 days.",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 48
+      },
+      "id": 30,
+      "interval": "",
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": null,
+      "repeatDirection": "v",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(workbook_time_entry_people_with_time{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"})/sum(workbook_time_entry_people_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"})",
+          "legendFormat": "{{department_name}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Departments: People with time entered",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "percentunit",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    }
+  ],
+  "refresh": false,
+  "schemaVersion": 19,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "1",
+          "value": "1"
+        },
+        "hide": 2,
+        "label": null,
+        "name": "company_id",
+        "options": [
+          {
+            "selected": true,
+            "text": "1",
+            "value": "1"
+          }
+        ],
+        "query": "1",
+        "skipUrlSync": false,
+        "type": "constant"
+      },
+      {
+        "current": {
+          "text": "your_prometheus_job",
+          "value": "your_prometheus_job"
+        },
+        "hide": 2,
+        "label": null,
+        "name": "wb_job",
+        "options": [
+          {
+            "selected": true,
+            "text": "your_prometheus_job",
+            "value": "your_prometheus_job"
+          }
+        ],
+        "query": "your_prometheus_job",
+        "skipUrlSync": false,
+        "type": "constant"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "datasource": "Prometheus",
+        "definition": "workbook_time_entry_jobs_total{job=~\"[[wb_job]]\",company_id=~\"[[company_id]]\"}",
+        "hide": 2,
+        "includeAll": false,
+        "label": null,
+        "multi": false,
+        "name": "department_name",
+        "options": [],
+        "query": "workbook_time_entry_jobs_total{job=~\"[[wb_job]]\",company_id=~\"[[company_id]]\"}",
+        "refresh": 2,
+        "regex": "/.*department_name=\"([^\"]*)\".*/",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "",
+  "title": "Workbook (Projects)",
+  "uid": "",
+  "version": 18
+}
