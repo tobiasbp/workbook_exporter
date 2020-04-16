@@ -326,6 +326,7 @@ class WorkbookCollector(object):
             yield g
 
         # Buckets for histograms
+        # Add Buckets to config
         days_employed_buckets = [3*30, 5*30, 2*12*30+9*30, 5*12*30+8*30, 8*12*30+7*30]
         profit_buckets = [0.2, 0.4, 0.6, 0.8]
         hours_sale_buckets = [500, 1000, 1500, 2000]
@@ -817,7 +818,7 @@ class WorkbookCollector(object):
                      debit_buckets,
                      'workbook_debit_due',
                      'Debit due',
-                     ['company_id', currency],
+                     ['company_id', 'currency'],
                      [str(company_id), currency])
 
         # How many requests did we make to the Workbook API?
