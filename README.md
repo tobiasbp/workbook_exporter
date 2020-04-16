@@ -63,11 +63,40 @@ the file `dashboard_workbook_projects.json`. Use the import feature in Grafana
 to start using it.
 
 After import in Grafana, change variables `company_id` and `wb_job` to match the
-labels `company_id` and `job` on your Prometheus metrics. When saving the
+labels `company_id` and `job` in your Prometheus metrics. When saving the
 dashboard after setting the variables, make sure that you enable the
 option "save current variables".
 
+## Finance
+A dashboard with financial data is in
+the file `dashboard_workbook_finace.json`. Use the import feature in Grafana
+to start using it.
+
+After import in Grafana, change variables `company_id` and `wb_job` to match the
+labels `company_id` and `job` in your Prometheus metrics. When saving the
+dashboard after setting the variables, make sure that you enable the
+option "save current variables".
+
+The dashboards has the following variables which can be changed by the user
+* "Finance accounts": The accounts to show graphs for (Multi choice)
+* "Days to use when calculating change"
+* "Number of days to base prediction on"
+* "Number of days in the future to predict for"
+
+The dashboard includes the following graphs
+* Account balance
+* Account prediction
+* Account balance change
+* Debit & Credit
+* Debitors & Creditors
+* Employment length
+* Departments: Sum of hourly costs
+* Departments: Average hourly cost
+
+
+
+
 # To do
-Stuff to do. Should this not be in issues in GutHub?
+Stuff to do. Should this not be in issues in GitHub?
 
 * Status of active jobs in buckets
