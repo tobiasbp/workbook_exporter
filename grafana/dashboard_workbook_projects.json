@@ -822,7 +822,10 @@
   "refresh": false,
   "schemaVersion": 19,
   "style": "dark",
-  "tags": [],
+  "tags": [
+    "Workbook",
+    "Projects"
+  ],
   "templating": {
     "list": [
       {

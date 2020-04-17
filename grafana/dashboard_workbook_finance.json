@@ -12,7 +12,7 @@
       }
     ]
   },
-  "description": "A dashboard with data from Workbook.",
+  "description": "A dashboard with financial data from Workbook.",
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
@@ -830,7 +830,8 @@
   "schemaVersion": 19,
   "style": "dark",
   "tags": [
-    "finance"
+    "Workbook",
+    "Finance"
   ],
   "templating": {
     "list": [
@@ -1097,6 +1098,6 @@
   },
   "timezone": "",
   "title": "Workbook (Finance)",
-  "uid": """,
+  "uid": "",
   "version": 15
 }
