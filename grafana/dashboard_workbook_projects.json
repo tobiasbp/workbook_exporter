@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 36,
-  "iteration": 1587113670579,
+  "iteration": 1587114335774,
   "links": [],
   "panels": [
     {
@@ -56,7 +56,7 @@
       "renderer": "flot",
       "seriesOverrides": [],
       "spaceLength": 10,
-      "stack": false,
+      "stack": true,
       "steppedLine": false,
       "targets": [
         {
@@ -69,7 +69,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Departments: Jobs worked  on",
+      "title": "Jobs worked on",
       "tooltip": {
         "shared": true,
         "sort": 1,
