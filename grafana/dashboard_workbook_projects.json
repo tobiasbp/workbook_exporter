@@ -15,8 +15,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 21,
-  "iteration": 1586956967319,
+  "id": 36,
+  "iteration": 1587113670579,
   "links": [],
   "panels": [
     {
@@ -25,7 +25,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "description": "The number of jobs worked on for the previous 7 days.",
+      "description": "Number of jobs with time entered for the previous 7 days.",
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
@@ -109,10 +109,11 @@
     {
       "aliasColors": {},
       "bars": false,
+      "cacheTimeout": null,
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "description": "No of clients with active jobs",
+      "description": "Number of active billable jobs and their age.",
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
@@ -121,7 +122,7 @@
         "x": 12,
         "y": 0
       },
-      "id": 12,
+      "id": 44,
       "legend": {
         "avg": false,
         "current": false,
@@ -133,42 +134,34 @@
       },
       "lines": true,
       "linewidth": 1,
+      "links": [],
       "nullPointMode": "null",
       "options": {
         "dataLinks": []
       },
       "percentage": false,
+      "pluginVersion": "6.3.5",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "repeat": "Company",
-      "repeatDirection": "v",
       "seriesOverrides": [],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "workbook_active_customers_billable_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
-          "legendFormat": "Billable",
-          "refId": "A"
-        },
-        {
-          "expr": "workbook_active_customers_total_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}-workbook_active_customers_billable_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
-          "legendFormat": "Non billable",
-          "refId": "C"
-        },
-        {
-          "expr": "workbook_active_customers_total_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
-          "legendFormat": "Total",
-          "refId": "B"
+          "expr": "workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "format": "time_series",
+          "intervalFactor": 10,
+          "legendFormat": "{{le}} days of less",
+          "refId": "G"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "No of active clients",
+      "title": "Jobs (Billable)",
       "tooltip": {
         "shared": true,
         "sort": 1,
@@ -184,11 +177,11 @@
       },
       "yaxes": [
         {
-          "format": "short",
-          "label": null,
+          "format": "none",
+          "label": "",
           "logBase": 1,
           "max": null,
-          "min": "0",
+          "min": null,
           "show": true
         },
         {
@@ -296,9 +289,11 @@
     {
       "aliasColors": {},
       "bars": false,
+      "cacheTimeout": null,
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
+      "description": "Number of active non billable jobs and their age.",
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
@@ -307,8 +302,7 @@
         "x": 12,
         "y": 8
       },
-      "id": 32,
-      "interval": "",
+      "id": 45,
       "legend": {
         "avg": false,
         "current": false,
@@ -320,65 +314,26 @@
       },
       "lines": true,
       "linewidth": 1,
+      "links": [],
       "nullPointMode": "null",
       "options": {
         "dataLinks": []
       },
       "percentage": false,
+      "pluginVersion": "6.3.5",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [
-        {
-          "alias": "Average",
-          "dashLength": 6,
-          "dashes": true,
-          "fill": 0
-        },
-        {
-          "alias": "/15/",
-          "lines": false,
-          "points": true,
-          "yaxis": 2
-        }
-      ],
+      "seriesOverrides": [],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "workbook_jobs_age_days_sum{job=~\"[[wb_job]]\",company_id=~\"[[company_id]]\",billable=\"1\"}/workbook_jobs_age_days_count{job=~\"[[wb_job]]\",company_id=~\"[[company_id]]\",billable=\"1\"}",
-          "legendFormat": "Average",
-          "refId": "A"
-        },
-        {
-          "expr": "histogram_quantile(0.2, workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
-          "legendFormat": "20th percentile",
-          "refId": "C"
-        },
-        {
-          "expr": "histogram_quantile(0.4, workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
-          "legendFormat": "40th percentile",
-          "refId": "B"
-        },
-        {
-          "expr": "histogram_quantile(0.6, workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
-          "legendFormat": "60th percentile",
-          "refId": "D"
-        },
-        {
-          "expr": "histogram_quantile(0.8, workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
-          "legendFormat": "80th percentile",
-          "refId": "E"
-        },
-        {
-          "expr": "histogram_quantile(0.9, workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
-          "legendFormat": "90th percentile",
-          "refId": "F"
-        },
-        {
-          "expr": "workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",le=\"15\"}",
-          "legendFormat": "Jobs 15 days or less old",
+          "expr": "workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "format": "time_series",
+          "intervalFactor": 10,
+          "legendFormat": "{{le}} days of less",
           "refId": "G"
         }
       ],
@@ -386,7 +341,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Job age (Billable)",
+      "title": "Jobs (Non billable)",
       "tooltip": {
         "shared": true,
         "sort": 1,
@@ -402,16 +357,15 @@
       },
       "yaxes": [
         {
-          "decimals": null,
-          "format": "d",
-          "label": null,
-          "logBase": 2,
+          "format": "none",
+          "label": "",
+          "logBase": 1,
           "max": null,
           "min": null,
           "show": true
         },
         {
-          "format": "none",
+          "format": "short",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -517,6 +471,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
+      "description": "Number of clients with active jobs",
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
@@ -525,8 +480,7 @@
         "x": 12,
         "y": 16
       },
-      "id": 42,
-      "interval": "",
+      "id": 12,
       "legend": {
         "avg": false,
         "current": false,
@@ -546,65 +500,34 @@
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [
-        {
-          "alias": "Average",
-          "dashLength": 6,
-          "dashes": true,
-          "fill": 0
-        },
-        {
-          "alias": "/15/",
-          "lines": false,
-          "points": true,
-          "yaxis": 2
-        }
-      ],
+      "repeat": "Company",
+      "repeatDirection": "v",
+      "seriesOverrides": [],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "workbook_jobs_age_days_sum{job=~\"[[wb_job]]\",company_id=~\"[[company_id]]\",billable=\"1\"}/workbook_jobs_age_days_count{job=~\"[[wb_job]]\",company_id=~\"[[company_id]]\",billable=\"0\"}",
-          "legendFormat": "Average",
+          "expr": "workbook_active_customers_billable_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "legendFormat": "Billable",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.2, workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
-          "legendFormat": "20th percentile",
+          "expr": "workbook_active_customers_total_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}-workbook_active_customers_billable_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "legendFormat": "Non billable",
           "refId": "C"
         },
         {
-          "expr": "histogram_quantile(0.4, workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
-          "legendFormat": "40th percentile",
+          "expr": "workbook_active_customers_total_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "legendFormat": "Total",
           "refId": "B"
-        },
-        {
-          "expr": "histogram_quantile(0.6, workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
-          "legendFormat": "60th percentile",
-          "refId": "D"
-        },
-        {
-          "expr": "histogram_quantile(0.8, workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
-          "legendFormat": "80th percentile",
-          "refId": "E"
-        },
-        {
-          "expr": "histogram_quantile(0.9, workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
-          "legendFormat": "90th percentile",
-          "refId": "F"
-        },
-        {
-          "expr": "workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",le=\"15\"}",
-          "legendFormat": "Jobs 15 days or less old",
-          "refId": "G"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Job age (Non billable)",
+      "title": "Active clients",
       "tooltip": {
         "shared": true,
         "sort": 1,
@@ -620,16 +543,15 @@
       },
       "yaxes": [
         {
-          "decimals": null,
-          "format": "d",
+          "format": "short",
           "label": null,
-          "logBase": 2,
+          "logBase": 1,
           "max": null,
-          "min": null,
+          "min": "0",
           "show": true
         },
         {
-          "format": "none",
+          "format": "short",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -735,7 +657,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "description": "The total number of hours registered for all people in the department during the previous 7 days.",
+      "description": "The total number of hours registered pr. department during the previous 7 days.",
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
@@ -768,7 +690,7 @@
       "repeatDirection": "h",
       "seriesOverrides": [],
       "spaceLength": 10,
-      "stack": false,
+      "stack": true,
       "steppedLine": false,
       "targets": [
         {
@@ -781,7 +703,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Departments: Hours worked last 7 days",
+      "title": "Time registered previous 7 days",
       "tooltip": {
         "shared": true,
         "sort": 1,
@@ -799,7 +721,7 @@
         {
           "format": "h",
           "label": null,
-          "logBase": 2,
+          "logBase": 1,
           "max": null,
           "min": null,
           "show": true
@@ -883,5 +805,5 @@
   "timezone": "",
   "title": "Workbook (Projects)",
   "uid": "",
-  "version": 20
+  "version": 6
 }
