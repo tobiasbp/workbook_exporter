@@ -3,8 +3,12 @@
 # workbook_exporter
 A Prometheus exporter of metrics from Deltek Workbook
 
+Metrics are exported on port 9701 by default.
+They are available at http://example.com:9701/metrics.
+
 In my experience. Workbook is very slow. Scrapes can exceed 60 seconds.
 Especially, if you have more than one company.
+
 
 ## Install
 Install dependencies with pip
@@ -93,7 +97,37 @@ The dashboard includes the following graphs
 * Departments: Sum of hourly costs
 * Departments: Average hourly cost
 
+# Docker
+Run the workbook_exporter in a docker container
 
+## Usage
+Build the image as 'workbook_exporter' (From the repo dir):
+`docker build -t workbook_exporter .`
+
+Run a container (In the background), passing credentials as environment variables:
+`docker run --detach --name wbe -e "WORKBOOK_URL=https://your.url/api"
+ -e "WORKBOOK_USER=user" -e "WORKBOOK_PASSWORD=secret" workbook_exporter`
+
+Confirm the container is running:
+`docker container ls`
+
+Take a look at the log file in the container, to make sure things work as expected:
+docker exec wbe cat /var/log/workbook_exporter.log
+
+
+## Security
+Anyone can scrape your data, so you should not allow incomming traffic by exposing
+the port, unless you are on a trusted network.
+
+Use another container in the same network to scrape the data,
+or run a a proxy server with authentication in front of the
+workbook_exporter, to control the access to the data.
+
+If you want to be able to allow incomming traffic to the container from
+any source (Not recomended) you can `publish` the port 9701 to allow incomming
+traffic by adding `--publish 9701:9701` to the run command. You can make the container
+listen on another port, and forward to the local port 9701. To listen on port 8080,
+you would use the command `--publish 8080:9701`.
 
 
 # To do
