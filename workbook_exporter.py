@@ -962,6 +962,8 @@ def main():
           format='%(asctime)s:%(levelname)s:%(message)s'
           )
 
+        logging.info("Starting workbook_exporter")
+
         # Get credentials from CLI (Including environment vars)
         wb_url = args.workbook_url
         wb_user = args.workbook_user
