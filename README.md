@@ -100,35 +100,57 @@ The dashboard includes the following graphs
 # Docker
 Run the workbook_exporter in a docker container
 
-## Usage
-Build the image as 'workbook_exporter' (From the repo dir):
-`docker build -t workbook_exporter .`
+## Basic usage
 
-Run a container (In the background), passing credentials as environment variables:
-`docker run --detach --name wbe -e "WORKBOOK_URL=https://your.url/api"
- -e "WORKBOOK_USER=user" -e "WORKBOOK_PASSWORD=secret" workbook_exporter`
+Run workbook_exporter in a container passing credentials as environment variables:
+`docker run --detach --name wbe -p 9701:9701 -e "WORKBOOK_URL=https://your.url/api"
+ -e "WORKBOOK_USER=user" -e "WORKBOOK_PASSWORD=secret" tobiasbp/workbook_exporter`
 
-Confirm the container is running:
-`docker container ls`
-
-Take a look at the log file in the container, to make sure things work as expected:
-docker exec wbe cat /var/log/workbook_exporter.log
-
-
-## Security
 Anyone can scrape your data, so you should not allow incomming traffic by exposing
 the port, unless you are on a trusted network.
 
-Use another container in the same network to scrape the data,
-or run a a proxy server with authentication in front of the
-workbook_exporter, to control the access to the data.
+## With authentication and HTTPS
+Use the `docker-compose` with the file `docker-compose.yml` to set up the workbook exporter
+behind an nginx reverse proxy with authentication and Let's Encrypt certificates.
+You can edit the file, if you do not want to configure the setup using environment
+variables, as I have done in the following.
 
-If you want to be able to allow incomming traffic to the container from
-any source (Not recomended) you can `publish` the port 9701 to allow incomming
-traffic by adding `--publish 9701:9701` to the run command. You can make the container
-listen on another port, and forward to the local port 9701. To listen on port 8080,
-you would use the command `--publish 8080:9701`.
+Make sure you have the apache2-utils/httpd-tools, so you can create a
+password file for nginx to use.
 
+Set environment variables:
+* export WORKBOOK_URL="https://me.workbook.dk/api"
+* export WORKBOOK_USER="my_user"
+* export WORKBOOK_PASSWORD="secret"
+* export LETSENCRYPT_MAIL="me@example.com"
+* export WORKBOOK_VIRTUAL_HOST="wbe.example.com"
+
+Make sure $WORKBOOK_VIRTUAL_HOST resolves to the IP running your exporter. Otherwise,
+the certificates can not be issued.
+
+Create a directory to hold the password file for Nginx to use:
+* `mkdir ~/htpasswd`
+
+Create password file for user `scrape_user`. This is the user Prometheus should use when scraping:
+* `htpasswd -c ~/htpasswd/$WORKBOOK_VIRTUAL_HOST scrape_user`
+
+You should now have a password file with the name of your virtual host in `~/htpasswd`.
+
+Start the containers:
+`docker-compose up --detach [docker-compose.yml]`
+
+Let's make sure everything is doing what we expect:
+
+
+You should be asked for credentials (Status code 401) when connecting on ports 9701 & 443:
+* `curl https://wbe.everland.dk:9701`
+* `curl https://wbe.everland.dk`
+
+Port 80 should be forwarded (Status code 301):
+* `curl http://wbe.everland.dk`
+
+You should get the Workbook metrics when logging in with your credentials:
+`curl --user scrape_user https://wbe.everland.dk/metrics`
 
 # To do
 Stuff to do. Should this not be in issues in GitHub?

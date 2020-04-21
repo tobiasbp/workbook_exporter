@@ -1,0 +1,46 @@
+version: '2'
+services:
+  nginx_proxy:
+    image: jwilder/nginx-proxy:alpine
+    container_name: nginx_proxy
+    networks:
+      - wbe_network
+    ports:
+      - "80:80"
+      - "443:443"
+      - "9701:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ~/htpasswd:/etc/nginx/htpasswd
+      - /etc/nginx/certs
+      - /etc/nginx/vhost.d
+      - /usr/share/nginx/html
+
+  nginx-proxy-letsencrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion  
+    container_name: nginx-proxy-letsencrypt
+    networks:
+      - wbe_network
+    volumes_from:
+      - nginx_proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - DEFAULT_MAIL=${LETSENCRYPT_MAIL}
+
+  workbook_exporter:
+    image: tobiasbp/workbook_exporter:latest
+    container_name: workbook_exporter
+    networks:
+      - wbe_network
+    expose:
+      - "9701"
+    environment:
+      - VIRTUAL_HOST=${WORKBOOK_VIRTUAL_HOST}
+      - LETSENCRYPT_HOST=${WORKBOOK_VIRTUAL_HOST}
+      - WORKBOOK_URL=${WORKBOOK_URL}
+      - WORKBOOK_USER=${WORKBOOK_USER}
+      - WORKBOOK_PASSWORD=${WORKBOOK_PASSWORD}
+
+networks:
+  wbe_network:
