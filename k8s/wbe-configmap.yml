@@ -1,0 +1,17 @@
+apiVersion: v1 
+kind: ConfigMap 
+metadata:
+  name: wbe-configmap
+  namespace: workbook-exporter
+data:
+  workbook_exporter.yml: |
+    workbook:
+      url: "https://example.workbook.dk/api"
+      user: "my_k8s_user"
+      password: "my_k8s_password"
+      companies: [1]
+      active_jobs: [0,1,2,3]
+      finance_account_types: [3]
+    data:
+      job_age_buckets: [15,30,60,150,300,450,600]
+      client_age_buckets: [15,30,60,150,300,450,60]
