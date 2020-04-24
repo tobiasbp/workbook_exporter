@@ -1,11 +1,4 @@
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: workbook-exporter
-  labels:
-    app: workbook-exporter
----
-apiVersion: v1
 kind: Service
 metadata:
   name: workbook-exporter-svc
@@ -42,3 +35,19 @@ spec:
         image: tobiasbp/workbook_exporter:latest
         ports:
         - containerPort: 9701
+        env:
+        - name: WORKBOOK_URL
+          valueFrom:
+            secretKeyRef:
+              name: wbe-secret
+              key: workbook_url
+        - name: WORKBOOK_USER
+          valueFrom:
+            secretKeyRef:
+              name: wbe-secret
+              key: workbook_user
+        - name: WORKBOOK_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: wbe-secret
+              key: workbook_password
