@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: workbook-exporter
+  labels:
+    app: workbook-exporter
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: workbook-exporter-svc
+  namespace: workbook-exporter
+  labels:
+    app: workbook-exporter
+spec:
+  ports:
+  - port: 9701
+    targetPort: 9701
+    protocol: TCP
+  selector:
+    app: workbook-exporter
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workbook-exporter-dep
+  namespace: workbook-exporter
+  labels:
+    app: workbook-exporter
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: workbook-exporter
+  template:
+    metadata:
+      labels:
+        app: workbook-exporter
+    spec:
+      containers:
+      - name: workbook-exporter
+        image: tobiasbp/workbook_exporter:latest
+        ports:
+        - containerPort: 9701
