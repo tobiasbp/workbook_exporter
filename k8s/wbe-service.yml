@@ -30,24 +30,32 @@ spec:
       labels:
         app: workbook-exporter
     spec:
+      volumes:
+        - name: config-volume
+          configMap:
+            name: wbe-configmap
       containers:
       - name: workbook-exporter
         image: tobiasbp/workbook_exporter:latest
         ports:
-        - containerPort: 9701
+          - containerPort: 9701
+        volumeMounts:
+          - name: config-volume
+            mountPath: /etc/workbook_exporter.yml
+            subPath: workbook_exporter.yml
         env:
-        - name: WORKBOOK_URL
-          valueFrom:
-            secretKeyRef:
-              name: wbe-secret
-              key: workbook_url
-        - name: WORKBOOK_USER
-          valueFrom:
-            secretKeyRef:
-              name: wbe-secret
-              key: workbook_user
-        - name: WORKBOOK_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: wbe-secret
-              key: workbook_password
+          - name: WORKBOOK_URL
+            valueFrom:
+              secretKeyRef:
+                name: wbe-secret
+                key: workbook_url
+          - name: WORKBOOK_USER
+            valueFrom:
+              secretKeyRef:
+                name: wbe-secret
+                key: workbook_user
+          - name: WORKBOOK_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: wbe-secret
+                key: workbook_password

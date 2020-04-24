@@ -152,6 +152,25 @@ Port 80 should be forwarded (Status code 301):
 You should get the Workbook metrics when logging in with your credentials:
 `curl --user scrape_user https://wbe.everland.dk/metrics`
 
+
+# Kubernetes
+
+Create a new namespace
+`kubectl create namespace workbook-exporter`
+
+Create a secret with the Workbook credentials
+`kubectl create secret --namespace workbook-exporter generic wbe-secret
+ --from-literal=workbook_url='https://example.workbook.dk/api'
+ --from-literal=workbook_user='my_user'
+ --from-literal=workbook_password='my_password'`
+
+Edit wbe-configmap.yml and apply if you want non-default config
+`kubectl apply -f wbe-configmap.yml`
+
+Add workbook-exporter as a service to your cluster
+`kubectl apply -f wbe-service.yml`
+
+
 # To do
 Stuff to do. Should this not be in issues in GitHub?
 
