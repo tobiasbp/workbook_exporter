@@ -60,7 +60,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "workbook_time_entry_jobs_total{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by (job,department_name) (workbook_time_entry_jobs_total{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "legendFormat": "{{department_name}}",
           "refId": "A"
         }
@@ -150,7 +150,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by(job,le) (workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "format": "time_series",
           "intervalFactor": 10,
           "legendFormat": "{{le}} days of less",
@@ -240,7 +240,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "(workbook_time_entry_hours_billable{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}/workbook_time_entry_hours_capacity_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}) - ignoring(days)(workbook_employees_profit_ratio_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}/workbook_employees_profit_ratio_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
+          "expr": "sum by(job,department_name) ((workbook_time_entry_hours_billable{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}/workbook_time_entry_hours_capacity_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}) - ignoring(days)(workbook_employees_profit_ratio_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}/workbook_employees_profit_ratio_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}))",
           "legendFormat": "{{department_name}}",
           "refId": "A"
         }
@@ -330,7 +330,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by(job,le) (workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "format": "time_series",
           "intervalFactor": 10,
           "legendFormat": "{{le}} days of less",
@@ -419,7 +419,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "(workbook_time_entry_hours_billable{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}/workbook_time_entry_hours_capacity_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"})",
+          "expr": "sum by(job,department_name) (workbook_time_entry_hours_billable{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}/workbook_time_entry_hours_capacity_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"})",
           "legendFormat": "{{department_name}}",
           "refId": "A"
         }
@@ -508,17 +508,17 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "workbook_active_customers_billable_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by(job) (workbook_active_customers_billable_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "legendFormat": "Billable",
           "refId": "A"
         },
         {
-          "expr": "workbook_active_customers_total_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}-workbook_active_customers_billable_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by(job) (workbook_active_customers_total_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}-workbook_active_customers_billable_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "legendFormat": "Non billable",
           "refId": "C"
         },
         {
-          "expr": "workbook_active_customers_total_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by(job) (workbook_active_customers_total_jobs{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "legendFormat": "Total",
           "refId": "B"
         }
@@ -605,7 +605,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "workbook_time_entry_hours_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}/workbook_time_entry_hours_capacity_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by(job,department_name) (workbook_time_entry_hours_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}/workbook_time_entry_hours_capacity_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"})",
           "legendFormat": "{{department_name}}",
           "refId": "B"
         }
@@ -694,7 +694,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "workbook_time_entry_hours_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by(job,department_name) (workbook_time_entry_hours_total{company_id=~\"[[company_id]]\",days=\"7\",job=~\"[[wb_job]]\"})",
           "legendFormat": "{{department_name}}",
           "refId": "B"
         }
