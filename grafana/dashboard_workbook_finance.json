@@ -62,7 +62,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "workbook_finance_account_balance{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\",account_description=~\"[[finance_accounts]]\"}",
+          "expr": "sum by(job,account_description) (workbook_finance_account_balance{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\",account_description=~\"[[finance_accounts]]\"})",
           "intervalFactor": 10,
           "legendFormat": "{{account_description}}",
           "refId": "A"
@@ -170,37 +170,37 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "abs(workbook_credit_total_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\"})",
+          "expr": "abs(sum by(job) (workbook_credit_total_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\"}))",
           "intervalFactor": 5,
           "legendFormat": "Credit total",
           "refId": "A"
         },
         {
-          "expr": "abs(workbook_credit_due_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\"})",
+          "expr": "abs(sum by(job) (workbook_credit_due_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\"}))",
           "intervalFactor": 5,
           "legendFormat": "Credit due",
           "refId": "B"
         },
         {
-          "expr": "workbook_debit_total_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\"}",
+          "expr": "sum by(job) (workbook_debit_total_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\"})",
           "intervalFactor": 5,
           "legendFormat": "Debit total",
           "refId": "C"
         },
         {
-          "expr": "workbook_debit_due_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\"}",
+          "expr": "sum by(job) (workbook_debit_due_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\"})",
           "intervalFactor": 5,
           "legendFormat": "Debit due",
           "refId": "D"
         },
         {
-          "expr": "workbook_debit_total_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}- abs(workbook_credit_total_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
+          "expr": "sum by(job) (workbook_debit_total_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}) - abs(sum by(job) (workbook_credit_total_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}))",
           "intervalFactor": 5,
           "legendFormat": "Difference total",
           "refId": "E"
         },
         {
-          "expr": "workbook_debit_due_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}- abs(workbook_credit_due_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
+          "expr": "sum by(job) (workbook_debit_due_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}) - abs(sum by(job) (workbook_credit_due_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}))",
           "intervalFactor": 5,
           "legendFormat": "Difference due",
           "refId": "F"
@@ -289,7 +289,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "predict_linear(workbook_finance_account_balance{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\",account_description=~\"[[finance_accounts]]\"}[${prediction_base_days}d], ${prediction_future_days}*24*60^2)",
+          "expr": "sum by(job,account_description) (predict_linear(workbook_finance_account_balance{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\",account_description=~\"[[finance_accounts]]\"}[${prediction_base_days}d], ${prediction_future_days}*24*60^2))",
           "intervalFactor": 5,
           "legendFormat": "{{account_description}}",
           "refId": "B"
@@ -397,37 +397,37 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "workbook_credit_total_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by(job) (workbook_credit_total_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "intervalFactor": 5,
           "legendFormat": "Creditors total",
           "refId": "A"
         },
         {
-          "expr": "workbook_credit_due_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by(job) (workbook_credit_due_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "intervalFactor": 5,
           "legendFormat": "Creditors due",
           "refId": "B"
         },
         {
-          "expr": "workbook_debit_total_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by(job) (workbook_debit_total_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "intervalFactor": 5,
           "legendFormat": "Debitors total",
           "refId": "C"
         },
         {
-          "expr": "workbook_debit_due_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by(job) (workbook_debit_due_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "intervalFactor": 5,
           "legendFormat": "Debitors due",
           "refId": "D"
         },
         {
-          "expr": "workbook_debit_total_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}-workbook_credit_total_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by(job) (workbook_debit_total_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}) - sum by(job) (workbook_credit_total_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "intervalFactor": 5,
           "legendFormat": "Difference total",
           "refId": "E"
         },
         {
-          "expr": "workbook_debit_due_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}-workbook_credit_due_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by(job) (workbook_debit_due_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}) - sum by(job) (workbook_credit_due_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "intervalFactor": 5,
           "legendFormat": "Difference due",
           "refId": "F"
@@ -437,7 +437,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Debitors & Creditors",
+      "title": "Number of debitors & creditors",
       "tooltip": {
         "shared": true,
         "sort": 1,
@@ -516,7 +516,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "delta(workbook_finance_account_balance{company_id=~\"[[company_id]]\",account_description=~\"[[finance_accounts]]\",job=~\"[[wb_job]]\"}[${change_days}d])",
+          "expr": "sum by(job,account_description) (delta(workbook_finance_account_balance{company_id=~\"[[company_id]]\",account_description=~\"[[finance_accounts]]\",job=~\"[[wb_job]]\"}[${change_days}d]))",
           "intervalFactor": 5,
           "legendFormat": "{{account_description}}",
           "refId": "B"
@@ -598,7 +598,7 @@
       "reverseYBuckets": false,
       "targets": [
         {
-          "expr": "workbook_employees_days_employed_bucket{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"}",
+          "expr": "sum by(job,le) (workbook_employees_days_employed_bucket{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "format": "heatmap",
           "intervalFactor": 1,
           "legendFormat": "{{le}}",
@@ -681,7 +681,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "workbook_employees_hours_cost_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\"}",
+          "expr": "sum by(job,department_name) (workbook_employees_hours_cost_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\"})",
           "intervalFactor": 10,
           "legendFormat": "{{department_name}}",
           "refId": "A"
@@ -778,7 +778,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "workbook_employees_hours_cost_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\"}/workbook_employees_hours_cost_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\"}",
+          "expr": "sum by(job,department_name) (workbook_employees_hours_cost_sum{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\"}/workbook_employees_hours_cost_count{company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\",currency=~\"[[currency]]\"})",
           "intervalFactor": 10,
           "legendFormat": "{{department_name}}",
           "refId": "A"
