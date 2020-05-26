@@ -259,7 +259,7 @@ class WorkbookCollector(object):
                 # Replace price entry, if price is newer
                 # than existing, and not in the future
                 if new_date > current_date and new_date <= datetime.now():
-                  prices_dict[p['EmployeeId']]
+                  prices_dict[p['EmployeeId']] = p
 
 
             # Get a list of finance accounts
@@ -512,13 +512,14 @@ class WorkbookCollector(object):
             # Only store the newest. They have ValidFrom date.
             # We don't know the company IDs  
             price_dict = {c_id:{} for c_id in companies.keys()}
-            #print(price_dict)
-            for p in prices:
+
+            # Run through dict of current prices
+            for e_id, e_prices in prices_dict.items():
 
                 # company list
                 try:
                   # The employee
-                  e = employees[p['EmployeeId']]
+                  e = employees[e_id]
                   # Employee's company
                   c_id = e['CompanyId']
                   # Employees's department
@@ -539,22 +540,8 @@ class WorkbookCollector(object):
                 if d_id not in price_dict[c_id]:
                   price_dict[c_id][d_id] = {}
 
-                # If we allready have data on the current employee
-                # We may need to update the price
-                if price_dict[c_id][d_id].get(p['EmployeeId']):
-                    # Date for currently known data
-                    existing_date = parse_date(
-                      price_dict[c_id][d_id][p['EmployeeId']]['ValidFrom'])
-
-                    # Dato for this price
-                    new_date = parse_date(p['ValidFrom'])
-                    # Update data if this entry is newer than existing
-                    # date, but not in the future
-                    if new_date > existing_date and new_date <= datetime.now():
-                        price_dict[c_id][d_id][p['EmployeeId']] = p
-                else:
-                    # Add missing date
-                    price_dict[c_id][d_id][p['EmployeeId']] = p
+                # Add employees prices to dict
+                price_dict[c_id][d_id][e_id] = e_prices
 
             # Loop through company price dicts
             for c_id, c_prices in price_dict.items():
@@ -573,6 +560,10 @@ class WorkbookCollector(object):
                     # Loop price data, and add to observations dicts
                     for e_id, p in d_prices.items():
                       for field in observations.keys():
+
+                        # Making sure these reduntant dict are the same
+                        assert p['HoursCost'] == prices_dict[e_id]['HoursCost']
+
                         # Add observation if present
                         try:
                           observations[field].append(p[field])
