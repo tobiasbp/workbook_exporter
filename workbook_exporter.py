@@ -108,22 +108,6 @@ class WorkbookCollector(object):
         # Workbook API object
         self.wb = workbook_api.WorkbookAPI(wb_url, wb_user, wb_pass)
 
-    '''
-    def convert_to_reporting_currency(self, amount, currency_id, company_id):
-
-        # Don't convert if amount is in reporting currency
-        if currency_id == REPORTING_CURRENCY_ID:
-            return amount
-
-        converted_amount = self.wb.currency_convert(
-            Amount=amount,
-            FromCurrencyId=currency_id,
-            ToCurrencyId=REPORTING_CURRENCY_ID,
-            CompanyId=company_id)
-        #print("Converted:", amount, self.currencies[currency_id], "to",
-        #  converted_amount, self.currencies[REPORTING_CURRENCY_ID])
-        return converted_amount
-    '''
 
     def collect(self):
 
