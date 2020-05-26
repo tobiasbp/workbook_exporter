@@ -11,4 +11,4 @@ COPY workbook_exporter.py /usr/local/bin/
 COPY requirements.txt .
 RUN pip install --requirement requirements.txt
 
-ENTRYPOINT [ "python", "/usr/local/bin/workbook_exporter.py" ]
+ENTRYPOINT [ "python", "/usr/local/bin/workbook_exporter.py", "--disable-log-file" ]

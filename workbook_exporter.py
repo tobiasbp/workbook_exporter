@@ -931,6 +931,22 @@ def parse_args():
         default=default_config
     )
 
+    # Disable log to stdout. Default false
+    parser.add_argument(
+        "--disable-log-stdout",
+        # True if specified, False otherwise
+        action='store_true',
+        help="Specify to disable logging to stdout (Print in terminal)."
+    )
+
+    # Disable log to file. Default false
+    parser.add_argument(
+        "--disable-log-file",
+        # True if specified, False otherwise
+        action='store_true',
+        help="Specify to disable logging to file."
+    )
+
     return parser.parse_args()
 
 
@@ -955,11 +971,27 @@ def main():
         # Parse the command line arguments
         args = parse_args()
 
+        # A list of logging handlers
+        logging_handlers = []
+
+        # Handler for logging to file
+        if not args.disable_log_file:
+          logging_handlers.append(logging.FileHandler(args.log_file))
+
+        # Log to stdout if not disabled
+        if not args.disable_log_stdout:
+          logging_handlers.append(logging.StreamHandler())
+
+        # Abort if all logging disabled by user
+        if logging_handlers == []:
+          print("Error: Can not run with all logging disabled.")
+          exit(1)
+
         # Configure logging
         logging.basicConfig(
           level = eval("logging." + args.log_level),
-          filename = args.log_file,
-          format='%(asctime)s:%(levelname)s:%(message)s'
+          format='%(asctime)s:%(levelname)s:%(message)s',
+          handlers = logging_handlers
           )
 
         logging.info("Starting workbook_exporter")
