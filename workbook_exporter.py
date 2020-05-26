@@ -174,10 +174,10 @@ class WorkbookCollector(object):
 
 
             # Capacity profiles (Hours pr/week for employees)
-            # EMployee ID is key
+            # Employee ID is key
             capacity_profiles = {}
             for e in employees.values():
-              
+
               # We should only see an employee ID once
               assert not e['Id'] in capacity_profiles.keys()
 
@@ -240,6 +240,26 @@ class WorkbookCollector(object):
             # Employee prices
             prices = self.wb.get_employee_prices_hour(ActiveEmployees=True)
             no_of_wb_requests += 1
+
+            # Build a dictionary of current prices with employee IDs as key
+            prices_dict = {}
+            for p in prices:
+              # Attempt to get entry for employee
+              e = prices_dict.get(p['EmployeeId'], None)
+
+              # Add price to dict if employee is not represented
+              if not e:
+                prices_dict[p['EmployeeId']] = p
+              # Update price?
+              else:
+                # Date objects from dates
+                current_date = parse_date(e['ValidFrom'])
+                new_date = parse_date(p['ValidFrom'])
+
+                # Replace price entry, if price is newer
+                # than existing, and not in the future
+                if new_date > current_date and new_date <= datetime.now():
+                  prices_dict[p['EmployeeId']]
 
 
             # Get a list of finance accounts
@@ -333,6 +353,7 @@ class WorkbookCollector(object):
 
         # Top key is company_id:department_id
         time_entries_data = {c_id:{} for c_id in companies.keys()}
+
         # Add departments
         for c_id, c_data in time_entries_data.items():
             for d_id, d_data in departments.items():
@@ -340,6 +361,7 @@ class WorkbookCollector(object):
                     c_data[d_id] = {
                         'billable': 0,
                         'total': 0,
+                        'revenue': 0,
                         'resource_ids': set(),
                         'job_ids': set(),
                         'customer_ids': set()
@@ -368,12 +390,33 @@ class WorkbookCollector(object):
                 if jobs.get(j_id):
                     time_entries_data[c_id][d_id]['customer_ids'].add(jobs.get(j_id)['CustomerId'])
 
+                # Get hours in current time entry (If any)
                 h = e.get('Hours', 0)
+
+                # Register billable time
                 if e.get('Billable'):
                     time_entries_data[c_id][d_id]['billable'] += h
+
+                    try:
+                      # Get prices for employee
+                      p = prices_dict[e.get('ResourceId')]
+
+                      # Calculate revenue
+                      r = h * p['HoursSale']
+
+                      # Register revenue
+                      time_entries_data[c_id][d_id]['revenue'] += r
+
+                    except Exception as e:
+                      logging.error("Error while calculation revenue:", e)
+
+                # Register total time
                 time_entries_data[c_id][d_id]['total'] += h
 
+                # Register person/resource
                 time_entries_data[c_id][d_id]['resource_ids'].add(e.get('ResourceId'))
+
+                # Register job
                 time_entries_data[c_id][d_id]['job_ids'].add(j_id)
 
             # Labels to use for the following metrics
@@ -414,6 +457,12 @@ class WorkbookCollector(object):
                     yield g
 
                     g = GaugeMetricFamily(
+                      'workbook_time_entry_revenue',
+                      'Billable hours times sales price pr. hour', labels=label_names)
+                    g.add_metric(label_values, d_data['revenue'])
+                    yield g
+
+                    g = GaugeMetricFamily(
                       'workbook_time_entry_people_total',
                       'Number of people who must enter time', labels=label_names)
                     g.add_metric(label_values, len(d_employees))
@@ -423,6 +472,7 @@ class WorkbookCollector(object):
                     sum_of_work_hours = sum([
                       p['hours_week'] for p in capacity_profiles.values() if \
                        p['ResourceId'] in d_employees])
+
                     g = GaugeMetricFamily(
                       'workbook_time_entry_hours_capacity_total',
                       'Sum of hours to be entered', labels=label_names)
@@ -536,7 +586,7 @@ class WorkbookCollector(object):
                       observations['Profit'],
                       profit_buckets,
                       'workbook_employees_profit_ratio',
-                      'Estimated sales price of 1 hours work',
+                      'Estimated profit on 1 hours work',
                       ['company_id', 'department_id', 'department_name'],
                       [str(c_id), str(d_id), d_name])
 
