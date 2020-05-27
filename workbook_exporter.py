@@ -429,6 +429,11 @@ class WorkbookCollector(object):
 
             # Run through the time entries
             for c_id, c_data in time_entries_data.items():
+
+                # Get currency for company
+                currency_id = companies[c_id]['CurrencyId']
+                currency = self.currencies[currency_id]
+
                 for d_id, d_data in c_data.items():
                     # Values for the labels
                     label_values = [
@@ -458,8 +463,8 @@ class WorkbookCollector(object):
 
                     g = GaugeMetricFamily(
                       'workbook_time_entry_revenue',
-                      'Billable hours times sales price pr. hour', labels=label_names)
-                    g.add_metric(label_values, d_data['revenue'])
+                      'Billable hours times sales price pr. hour', labels=label_names + ['currency'])
+                    g.add_metric(label_values + [currency], d_data['revenue'])
                     yield g
 
                     g = GaugeMetricFamily(
