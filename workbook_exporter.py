@@ -645,7 +645,9 @@ class WorkbookCollector(object):
                 # Gather observations (Days since employment)
                 observations = {
                     'billable': [],
-                    'non_billable': []
+                    'non_billable': [],
+                    'status_id_billable': [],
+                    'status_id': []
                     }
                 active_clients = {
                     'billable': set(),
@@ -659,12 +661,34 @@ class WorkbookCollector(object):
                     date_end = parse_date(j.get('EndDate'))
                     # Days since job was created
                     job_age = (datetime.today() - date_created).days
+
                     if j.get('Billable'):
                         observations['billable'].append(job_age)
                         active_clients['billable'].add(j['CustomerId'])
+                        observations['status_id_billable'].append(j['StatusId'])
                     else:
                         observations['non_billable'].append(job_age)
                         active_clients['non_billable'].add(j['CustomerId'])
+
+                    observations['status_id'].append(j['StatusId'])
+
+                # Job status histogram (billable)
+                yield build_histogram(
+                   observations['status_id_billable'],
+                   ACTIVE_JOBS,
+                   'workbook_jobs_status_billable',
+                   'Status of billable jobs',
+                   ['company_id'],
+                   [str(company_id)])
+
+                # Job status histogram (Total)
+                yield build_histogram(
+                   observations['status_id'],
+                   ACTIVE_JOBS,
+                   'workbook_jobs_status_total',
+                   'Status of all jobs',
+                   ['company_id'],
+                   [str(company_id)])
 
                 # Job age histogram (billable)
                 yield build_histogram(
