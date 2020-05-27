@@ -152,7 +152,6 @@
         {
           "expr": "sum by(job,le) (workbook_jobs_age_days_bucket{billable=\"1\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "format": "time_series",
-          "intervalFactor": 10,
           "legendFormat": "{{le}} days of less",
           "refId": "G"
         }
@@ -332,7 +331,6 @@
         {
           "expr": "sum by(job,le) (workbook_jobs_age_days_bucket{billable=\"0\",company_id=~\"[[company_id]]\",job=~\"[[wb_job]]\"})",
           "format": "time_series",
-          "intervalFactor": 10,
           "legendFormat": "{{le}} days of less",
           "refId": "G"
         }
